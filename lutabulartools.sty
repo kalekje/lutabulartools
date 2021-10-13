@@ -1,0 +1,218 @@
+% Kale Ewasiuk (kalekje@gmail.com)
+% 2021-10-13
+%
+% Copyright (C) 2021 Kale Ewasiuk
+%
+% Permission is hereby granted, free of charge, to any person obtaining a copy
+% of this software and associated documentation files (the "Software"), to deal
+% in the Software without restriction, including without limitation the rights
+% to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+% copies of the Software, and to permit persons to whom the Software is
+% furnished to do so, subject to the following conditions:
+%
+% The above copyright notice and this permission notice shall be included in
+% all copies or substantial portions of the Software.
+%
+% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+% ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+% TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+% PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT
+% SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR
+% ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+% ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
+% OR OTHER DEALINGS IN THE SOFTWARE.
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{lutabulartools}[2021-10-13]
+
+\RequirePackage{booktabs}
+\RequirePackage{multirow}
+\RequirePackage{makecell}
+\RequirePackage{xparse}
+\RequirePackage{array}
+\RequirePackage{xcolor}
+\RequirePackage{colortbl}
+\RequirePackage{luacode}
+\RequirePackage[pl,extras]{penlight} % NEEDED
+
+\luadirect{lutabt = require('lutabulartools')}
+
+
+
+% DOES NOT WORK WITH colortbl package ???
+
+
+%% adapted from
+% https://tex.stackexchange.com/questions/182953/add-midrule-every-5-lines-automatically
+\def\midruleXstep{5}
+\def\midruleXrule{\gmidrule}
+
+\newcounter{midruleX}
+\newcommand*{\midruleX}{%
+  \aftergroup\aftergroup\aftergroup\midruleXaux
+}
+\newif\ifmidruleX
+\makeatletter
+\newcommand*{\midruleXaux}{%
+  \noalign{%
+    \stepcounter{midruleX}%
+    \ifnum\value{midruleX}=\midruleXstep %
+      \global\midruleXtrue
+      \resetmidruleX%
+    \else
+      \global\midruleXfalse
+    \fi
+  }
+  \ifmidruleX\midruleXrule\fi
+}
+\newcommand*{\resetmidruleX}{\setcounter{midruleX}{0}}  %%% todo maybe put noalign in here
+\makeatother
+
+\resetmidruleX
+
+%% https://tex.stackexchange.com/questions/145084/what-is-the-function-of-noalign
+%\begin{tabular}{rclc@{\midruleX}}  % inject midrule
+%\toprule
+%Number  & Student Id    & Name  & Score\\\midrule\resetmidruleX  % reset to 0
+%1       & 14-001    & Andy  & 75 \\
+%2       &           &       &    \\
+%3       &           &       &    \\
+%4       &           &       &    \\
+%5       &           &       &    \\
+%6       &           &       &    \\
+%7       &           &       &    \\
+%8       &           &       &    \\
+%9       &           &       &    \\\resetmidruleX
+%10      &           &       &    \\%\noalign{\resetmidruleX} % noalig required to not cause error with bottomrule, but that's oka because it should be used on row 9 anyway
+%\bottomrule
+%\end{tabular}
+
+
+%%%%
+
+%%% gray midrule and gray cmidrule
+
+\providecommand{\gmidrule}{\arrayrulecolor{lightgray}\specialrule{\lightrulewidth}{0.4\aboverulesep}{0.6\belowrulesep}\arrayrulecolor{black}}
+
+%%% use gcmidrule for a gray "c" midrule
+% Copy \cmidrule from
+%  http://mirrors.ctan.org/macros/latex/contrib/booktabs/booktabs.dtx
+% and modify it for insertion of \arrayrulecolor{lightgray} at the start,
+% and \arrayrulecolor{black} at the end
+\makeatletter
+\def\oldgcmidrule{\arrayrulecolor{lightgray}% Switch colour to lightgray
+    \noalign{\ifnum0=`}\fi
+    \@ifnextchar[{\@gcmidrule}{\@gcmidrule[\cmidrulewidth]}}
+\def\@gcmidrule[#1]{\@ifnextchar({\@@gcmidrule[#1]}{\@@gcmidrule[#1]()}}
+\def\@@gcmidrule[#1](#2)#3{\@@@gcmidrule[#3]{#1}{#2}}
+\def\@@@gcmidrule[#1-#2]#3#4{\global\@cmidla#1\relax
+    \global\advance\@cmidla\m@ne
+    \ifnum\@cmidla>0\global\let\@gtempa\@cmidrulea\else
+    \global\let\@gtempa\@cmidruleb\fi
+    \global\@cmidlb#2\relax
+    \global\advance\@cmidlb-\@cmidla
+    \global\@thisrulewidth=#3
+    \@setrulekerning{#4}
+    \ifnum\@lastruleclass=\z@\vskip 0.4\aboverulesep\fi
+    \ifnum0=`{\fi}\@gtempa
+    \noalign{\ifnum0=`}\fi\futurenonspacelet\@tempa\@xgcmidrule}
+\def\@xgcmidrule{%
+   \ifx\@tempa\gcmidrule
+       \vskip-\@thisrulewidth
+       \global\@lastruleclass=\@ne
+   \else \ifx\@tempa\morecmidrules
+       \vskip \cmidrulesep
+       \global\@lastruleclass=\@ne\else
+       \vskip 0.6\belowrulesep
+       \global\@lastruleclass=\z@
+   \fi\fi
+   \ifnum0=`{\fi}
+  \arrayrulecolor{black}}% Switch colour back to black
+\makeatother
+
+%%%
+
+\let\oldcmidrule\cmidrule % improve cmidrule. Can reference column number from back with a +, eg, {3+-2+} means third to second last
+\RenewExpandableDocumentCommand{\cmidrule}{ O{} D(){} m }{%
+    \luadirect{lutabt.make1cmidrule( \luastringN{#1},
+                            \luastring{#2},
+                            \luastring{#3},
+                            'oldcmidrule')
+    }%
+}
+
+\NewExpandableDocumentCommand{\cmidrules}{ O{} D(){} m }{%  supports comma in {}
+    \luadirect{lutabt.makecmidrules( \luastringN{#1},
+                            \luastring{#2},
+                            \luastring{#3},
+                            'cmidrule')
+    }%
+}
+
+\NewExpandableDocumentCommand{\gcmidrule}{ O{} D(){} m }{%
+    \luadirect{lutabt.make1cmidrule( \luastringN{#1},
+                                \luastring{#2},
+                                \luastring{#3},
+                                'oldgcmidrule')
+    }%
+}
+
+\NewExpandableDocumentCommand{\gcmidrules}{ O{} D(){} m }{%  supports comma in {}, rl can be passed as well
+    \luadirect{lutabt.makecmidrules( \luastringN{#1},
+                                    \luastring{#2},
+                                    \luastring{#3},
+                                    'gcmidrule')
+    }%
+}
+
+
+
+
+
+%%%  tabular commands
+
+\newcommand{\TabColNum}{\luadirect{tex.print(lutabt.get_TabColNum())}} % prints the current column number of tabular
+\newcommand{\NumTabCols}{\luadirect{tex.print(lutabt.NumTabCols)}} % prints the total num columns of tabular
+\newcounter{RowNumCnt}
+\setcounter{RowNumCnt}{1}
+
+\let\oldtabular\tabular
+\RenewExpandableDocumentCommand{\tabular}{ O{c} m }{%
+  \setcounter{RowNumCnt}{1}%
+  \luadirect{lutabt.calc_NumTabCols(\luastringN{#2})}%
+  \luadirect{lutabt.NumTabColsMX = 0}% fall back if calc doesnt work for some reason
+  \oldtabular[#1]{@{\stepcounter{RowNumCnt}}#2@{\luadirect{lutabt.get_TabColNum()}}}%
+}
+
+\expandafter\let\expandafter\oldtabulars\csname tabular*\endcsname
+\expandafter\let\expandafter\endoldtabulars\csname endtabular*\endcsname
+\RenewDocumentEnvironment{tabular*}{ m O{c} m }{%
+  \setcounter{RowNumCnt}{1}%
+  \luadirect{lutabt.calc_NumTabCols(\luastringN{#3})}%
+  \luadirect{lutabt.NumTabColsMX = 0}% fall back if calc doesnt work for some reason
+  \begin{oldtabulars}{#1}[#2]{@{\stepcounter{RowNumCnt}}#3@{\luadirect{lutabt.get_TabColNum()}}}
+}{%
+  \end{oldtabulars}%
+}
+%%% NOTE tabularx uses tabular*, NO NEED TO CHANGE TABULARX!
+
+
+%s0,spec,mcspec,pre,content
+% Magic Cell
+\NewExpandableDocumentCommand{\MC}{ s O{} D(){} D<>{} m }{%
+% Magic cell *wraps with {} but automatically checks for SI column,
+                    % [column spec] (mult-column spec override)  <pre-cell stuff>  {cell content}
+\luadirect{lutabt.MagicCell(
+    \luastring{#1},
+    \luastring{#2},
+    \luastringN{#3},
+    \luastringN{#4},
+    \luastringN{#5}
+)}}
+
+
+
+
+\ProcessOptions
+
