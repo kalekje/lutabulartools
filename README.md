@@ -4,7 +4,7 @@ This LuaLaTeX package offers some useful macros for tabular matter. The `\MC` co
 
 
 
-# License
+# License (MIT)
 
 Copyright (C) 2021 Kale Ewasiuk
 

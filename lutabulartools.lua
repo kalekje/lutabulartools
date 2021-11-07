@@ -1,6 +1,5 @@
 --% Kale Ewasiuk (kalekje@gmail.com)
---% 2021-10-13
---%
+--% +REVDATE+
 --% Copyright (C) 2021 Kale Ewasiuk
 --%
 --% Permission is hereby granted, free of charge, to any person obtaining a copy

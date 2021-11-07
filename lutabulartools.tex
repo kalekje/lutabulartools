@@ -1,6 +1,5 @@
 % Kale Ewasiuk (kalekje@gmail.com)
-% 2021-10-13
-%
+% +REVDATE+
 % Copyright (C) 2021 Kale Ewasiuk
 %
 % Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,30 +22,51 @@
 % OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
 % OR OTHER DEALINGS IN THE SOFTWARE.
 
-\documentclass{article}
-\usepackage{lutabulartools}
-\usepackage{url}
-\setlength{\parindent}{0ex}
-\setlength{\parskip}{0.75em}
-\newcommand{\PARA}[1]{\leavevmode\llap{\texttt{#1}\ \ \ }}
-\newcommand{\CMD}[1]{\texttt{\textbackslash #1}}
-\newcommand{\tMC}{\CMD{MC}}
-\newcommand{\ttt}[1]{``\texttt{#1}''}
 
-\newcommand{\Example}[1]{
-    \texttt{\detokenize{#1}}\par
-will produce:\par
-#1
+\documentclass[11pt,parskip=half]{scrartcl}
+\setlength{\parindent}{0ex}
+\newcommand{\llcmd}[1]{\leavevmode\llap{\texttt{\detokenize{#1}\ }}}
+\newcommand{\cmd}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\qcmd}[1]{``\cmd{#1}''}
+\usepackage{url}
+\usepackage{showexpl}
+\lstset{explpreset={justification=\raggedright,pos=r,wide=true}}
+\setlength\ResultBoxRule{0mm}
+\lstset{
+	language=[LaTeX]TeX,
+	basicstyle=\ttfamily\small,
+	commentstyle=\ttfamily\small\color{gray},
+	frame=none,
+	numbers=left,
+	numberstyle=\ttfamily\small\color{gray},
+	prebreak=\raisebox{0ex}[0ex][0ex]{\color{gray}\ensuremath{\hookleftarrow}},
+	extendedchars=true,
+	breaklines=true,
+	tabsize=4,
 }
+\addtokomafont{title}{\raggedright}
+\addtokomafont{author}{\raggedright}
+\addtokomafont{date}{\raggedright}
+\author{Kale Ewasiuk (\url{kalekje@gmail.com})}
+\usepackage[yyyymmdd]{datetime}\renewcommand{\dateseparator}{--}
+\date{\today}
+
+
+
+
+
+\newcommand{\tMC}{\cmd{\\MC}}
+
+\RequirePackage{lutabulartools}
+\title{lutabulartools}
+\subtitle{some useful tabular tools (LuaLaTeX-based)}
 
 \begin{document}
-\vspace*{-4em}
-    {\noindent\huge\bfseries lutabulartools \large -- some useful tabular tools\\(LuaLaTeX-based)}\\
-    2021-09-24, Kale Ewasiuk, \url{kalekje@gmail.com}
+\maketitle
 
 lutabulartools is a package that contains a few useful macros to help with tables.
 Most functions require LuaLaTeX. The following packages are loaded:
-{\tt
+\texttt{
 {booktabs},
 {multirow},
 {makecell},
@@ -60,67 +80,68 @@ Most functions require LuaLaTeX. The following packages are loaded:
 
 \section{\texttt{\textbackslash MC} -- Magic Cell}
 \texttt{\textbackslash MC} (magic cell) combines the facilities of
-\CMD{multirow} and \CMD{multicolumn} from the \texttt{multirow} package, and \CMD{makcell} from the titular package.
+\cmd{\multirow} and \cmd{\multicolumn} from the \texttt{multirow} package, and \cmd{\makcell} from the titular package.
 With the help of LuaLaTeX, it takes an easy-to-use cell specification and employs said commands as required.
 Here is the usage:
 
 \texttt{\textbackslash MC * [cell spec] <cell format> (override multicolumn col) \{contents\} }
 
-\PARA{*}This will wrap the entire command in \{\}. This is necessary for \texttt{siunitx} single-column width columns.
+\llcmd{*}This will wrap the entire command in \{\}. This is necessary for \texttt{siunitx} single-column width columns.
 However, the \tMC\  command attempts to detect this automatically.
 
-\PARA{[cell spec]}%
+\llcmd{[cell spec]}%
 Any letters placed in this argument are used for cell alignment.
-You can use one of three: \ttt{t}, \ttt{m}, \ttt{b} for top, middle, bottom (vertical alignment),
-or \ttt{l}, \ttt{c}, \ttt{r} for horizontal alignment.
+You can use one of three: \qcmd{t}, \qcmd{m}, \qcmd{b} for top, middle, bottom (vertical alignment),
+or \qcmd{l}, \qcmd{c}, \qcmd{r} for horizontal alignment.
 By default, \tMC\   will try to autodetect the horizontal alignment based on the current column.
 If it can't, it will be left-aligned.
 The default vertical alginment is top.
 
 This argument can also contain two integers, separated by a comma (if two are used).
-\ttt{C,R}, \ttt{C}, or \ttt{,R} are a valid inputs,
+\qcmd{C,R}, \qcmd{C}, or \qcmd{,R} are a valid inputs,
 where R=rows (int), and C=columns, (int).
 If you want a 1 column wide, multirow cell,
-you can pass \ttt{,R}. These numbers can be negative.
+you can pass \qcmd{,R}. These numbers can be negative.
 If no spec is passed, (argument empty), \tMC\
 acts like a \texttt{makecell}.
-Additionally, you can pass \ttt{+} in place of C (number of columns wide),
+Additionally, you can pass \qcmd{+} in place of C (number of columns wide),
 and it will make the cell width fill until the end of the current row.
 
 Examples:\\
-\ttt{\textbackslash MC[2,2]} means two columns wide, two rows tall.\\
-\ttt{\textbackslash MC[2,1]} or \ttt{\textbackslash MC[2]} or  means two columns wide, one row tall.\\
-\ttt{\textbackslash MC[1,2]} or \ttt{\textbackslash MC[,2]} means one column wide, two rows tall.\\
+\qcmd{\MC[2,2]} means two columns wide, two rows tall.\\
+\qcmd{\MC[2,1]} or \qcmd{\MC[2]} or  means two columns wide, one row tall.\\
+\qcmd{\MC[1,2]} or \qcmd{\MC[,2]} means one column wide, two rows tall.\\
 In any of these examples, you can place the alignment letters anywhere.
 
 
-\PARA{(override}%
+\llcmd{(override}%
 You may want to adjust the column specification of a multicolumn  cell,\\
-\PARA{multicolumn)}for example, using
+\llcmd{multicolumn)}for example, using
 \texttt{@\{\}c@\{\}} to remove padding between the cell.
 
-\PARA{<cell format>}%
-You can place formatting like \CMD{bfseries} here.
+\llcmd{<cell format>}%
+You can place formatting like \cmd{\bfseries} here.
 
 Here's an example.
 
-\Example{
+\begin{LTXexample}
 \begin{tabular}{| c | c | c | c | c | c |}\toprule
- \MC[2,2cm]<\tt>{2,2cm}   & \MC[2r]<\tt>{2r} & 5 & \MC[,2b]<\tt>{,2b}\\
+ \MC[2,2cm]<\ttfamily>{2,2cm}   & \MC[2r]<\ttfamily>{2r} & 5 & \MC[,2b]<\ttfamily>{,2b}\\
    &   & 3 & 4 & 5 & \\\midrule
- 1 & 2 & \MC[2l](@{}l)<\tt>{2l (\@\{\}l)} & 5 & 6666\\\cmidrule{3-4}
- 1 & \MC[+r]<\tt>{+r}  \\
+ 1 & 2 & \MC[2l](@{}l)<\ttfamily>{2l (\@\{\}l)} & 5 & 6666\\\cmidrule{3-4}
+ 1 & \MC[+r]<\ttfamily>{+r}  \\
   \\
- 1 & 2 & 3 & 4 & 5 & \MC[,-2]<\tt>{,\\-2}\\
+ 1 & 2 & 3 & 4 & 5 & \MC[,-2]<\ttfamily>{,\\-2}\\
 \end{tabular}
-}
+\end{LTXexample}
+
 
 %%% https://tex.stackexchange.com/questions/287346/width-of-column-after-multicolumn-header
 
 %\textbackslash MC[<spec>]{<contents}
 
 \subsection{Notes}
-This package redefines the {\tt tabular} and {\tt tabular*| environments.
+This package redefines the {\ttfamily tabular} and {\ttfamily tabular*} environments.
 It uses Lua pattern matching to parse the column specification of the table to know how many columns there are,
 and what the current column type is. If you have defined a column that creates many, it will not work.
 This will be worked out in later package revisions.
@@ -134,33 +155,34 @@ This will be worked out in later package revisions.
 
 \section{Some additional rules}
 This package also redefines the \texttt{booktabs} midrules.\\
-\PARA{\textbackslash gmidrule}is a full gray midrule.\\
+\llcmd{\gmidrule}is a full gray midrule.\\
 By taking advantage of knowing how many columns there are (if you chose to redefine \texttt{tabular}),
 you can specify individual column numbers (for a one column wide rule),
 or reference with respect to the last column (blank, \texttt{+1}, \texttt{+0}, or \texttt{+} means last column,
 \texttt{+2} means second last column, for example)
 or omit the last number.\\
-\PARA{\textbackslash cmidrule}is a single partial rule, with the above features\\
-\PARA{\textbackslash gcmidrule}is a single partial gray rule, with the above features\\
-You can add multiple \ttt{cmidrule}'s with the \texttt{(g)cmidrules} command. Separate with a comma.
-You can apply global trimming of the rules with the \ttt{()} optional argument, and then
-override it for a specific rule by placing \ttt{r} or \ttt{l} with the span specification.\\
-\PARA{\textbackslash gcmidrules}Can produce multiple, light gray partial rules\\
-\PARA{\textbackslash cmidrules}Can produce multiple black partial rules.\\
+\llcmd{\cmidrule}is a single partial rule, with the above features\\
+\llcmd{\gcmidrule}is a single partial gray rule, with the above features\\
+You can add multiple \qcmd{cmidrule}'s with the \texttt{(g)cmidrules} command. Separate with a comma.
+You can apply global trimming of the rules with the \qcmd{()} optional argument, and then
+override it for a specific rule by placing \qcmd{r} or \qcmd{l} with the span specification.\\
+\llcmd{\gcmidrules}Can produce multiple, light gray partial rules\\
+\llcmd{\cmidrules}Can produce multiple black partial rules.\\
 Here's an example:
 
-\Example{
+\begin{LTXexample}
 \begin{tabular}{c c c c c c}\toprule
  1 & 2 & 3 & 4 & 5 & 6\\ \cmidrule{+1}  % rule on last column
  1 & 2 & 3 & 4 & 5 & 6\\ \cmidrules{1,3-+3,+} % rule on first col, third to third last col, and last col
  1 & 2 & 3 & 4 & 5 & 6\\ \cmidrules{1,3-+3rl,+} % same as above, but trim middle
  1 & 2 & 3 & 4 & 5 & 6\\ \cmidrules(l){1,r3-+3,+1}% trim left for all, but only trim right for middle rule
 \end{tabular}
-}
+\end{LTXexample}
+
 
 \subsection{Midrule every X\textsuperscript{th} row}
 
-\PARA{\textbackslash midruleX}%
+\llcmd{\midruleX}%
 With this command, you can place a rule
 every X rows.
 You can change the step size and what kind of midrule you prefer.
@@ -170,14 +192,18 @@ You can change the step size and what kind of midrule you prefer.
 \end{verbatim}
 
 
-Usage: Insert midrulex at the end of each row in the column spec. Before you want counting to beg
-\begin{verbatim}
+Usage: Insert midrulex at the end of each row using  the column spec.
+Before you want counting to begin, you should
+apply resetmidruleX (also to avoid header rows).
 
+\begin{LTXexample}
 \def\midruleXstep{4}
 \def\midruleXrule{\cmidrules{1,3-4}}
-\begin{tabular}{rclc@{\midruleX}}  % inject midrule
+\begin{tabular}{rclc@{\midruleX}}
+                % ^^^ inject midrule
 \toprule
-Num  & . & . & .  \\\midrule\resetmidruleX  % reset to 0
+Num  & . & . & .  \\
+\midrule\resetmidruleX  % reset
 1    & & &  \\
 2    & & &  \\
 3    & & &  \\
@@ -188,33 +214,11 @@ Num  & . & . & .  \\\midrule\resetmidruleX  % reset to 0
 8    & & &  \\
 9    & & &  \\
 10   & & &  \\
-11   & & &  \\\resetmidruleX % dont want a bottom rule
+11   & & &  \\
+\resetmidruleX % no bottom rule
 12   & & &  \\
 \bottomrule
 \end{tabular}
-\end{verbatim}
-
-    will produce
-
-\def\midruleXstep{4}
-\def\midruleXrule{\cmidrules{1,3-4}}
-\begin{tabular}{rclc@{\midruleX}}  % inject midrule
-\toprule
-Num  & . & . & .  \\\midrule\resetmidruleX  % reset to 0
-1    & & &  \\
-2    & & &  \\
-3    & & &  \\
-4    & & &  \\
-5    & & &  \\
-6    & & &  \\
-7    & & &  \\
-8    & & &  \\
-9    & & &  \\
-10   & & &  \\
-11   & & &  \\\resetmidruleX % dont want a bottom rule
-12   & & &  \\
-\bottomrule
-\end{tabular}
+\end{LTXexample}
 
 \end{document}
-    

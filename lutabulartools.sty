@@ -1,6 +1,5 @@
 % Kale Ewasiuk (kalekje@gmail.com)
-% 2021-10-13
-%
+% +REVDATE+
 % Copyright (C) 2021 Kale Ewasiuk
 %
 % Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -53,7 +52,7 @@
   \aftergroup\aftergroup\aftergroup\midruleXaux
 }
 \newif\ifmidruleX
-\makeatletter
+
 \newcommand*{\midruleXaux}{%
   \noalign{%
     \stepcounter{midruleX}%
@@ -67,7 +66,7 @@
   \ifmidruleX\midruleXrule\fi
 }
 \newcommand*{\resetmidruleX}{\setcounter{midruleX}{0}}  %%% todo maybe put noalign in here
-\makeatother
+
 
 \resetmidruleX
 
@@ -100,7 +99,7 @@
 %  http://mirrors.ctan.org/macros/latex/contrib/booktabs/booktabs.dtx
 % and modify it for insertion of \arrayrulecolor{lightgray} at the start,
 % and \arrayrulecolor{black} at the end
-\makeatletter
+
 \def\oldgcmidrule{\arrayrulecolor{lightgray}% Switch colour to lightgray
     \noalign{\ifnum0=`}\fi
     \@ifnextchar[{\@gcmidrule}{\@gcmidrule[\cmidrulewidth]}}
@@ -129,7 +128,7 @@
    \fi\fi
    \ifnum0=`{\fi}
   \arrayrulecolor{black}}% Switch colour back to black
-\makeatother
+
 
 %%%
 
