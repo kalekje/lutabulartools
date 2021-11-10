@@ -136,6 +136,19 @@ Here's an example.
 \end{LTXexample}
 
 
+Here's another
+\begin{LTXexample}
+\begin{tabular}{|c|c|c|} \hline
+1 & 2 & 3\\\hline
+4 & \MC[2,2cm](@{}c@{}|)%
+    <\ttfamily>{5}\\\cline{1-1}
+  & \MC[2](r|){} \\\hline%hacky fix
+6 & 7 & 8\\\hline
+\end{tabular}
+\end{LTXexample}
+
+
+
 %%% https://tex.stackexchange.com/questions/287346/width-of-column-after-multicolumn-header
 
 %\textbackslash MC[<spec>]{<contents}
