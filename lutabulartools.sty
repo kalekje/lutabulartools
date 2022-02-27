@@ -1,6 +1,6 @@
 % Kale Ewasiuk (kalekje@gmail.com)
 % +REVDATE+
-% Copyright (C) 2021 Kale Ewasiuk
+% Copyright (C) 2021-2022 Kale Ewasiuk
 %
 % Permission is hereby granted, free of charge, to any person obtaining a copy
 % of this software and associated documentation files (the "Software"), to deal
@@ -38,12 +38,19 @@
 \luadirect{lutabt = require('lutabulartools')}
 
 
+\newcolumntype{\ltt@ltrim}{@{}}
+\newcolumntype{\ltt@rtrim}{@{}}
+\DeclareOption{notrim}{
+  \newcolumntype{\ltt@ltrim}{}
+  \newcolumntype{\ltt@rtrim}{}
+}
 
-% DOES NOT WORK WITH colortbl package ???
 
 
 %% adapted from
 % https://tex.stackexchange.com/questions/182953/add-midrule-every-5-lines-automatically
+%% https://tex.stackexchange.com/questions/145084/what-is-the-function-of-noalign
+
 \def\midruleXstep{5}
 \def\midruleXrule{\gmidrule}
 
@@ -67,32 +74,18 @@
 }
 \newcommand*{\resetmidruleX}{\setcounter{midruleX}{0}}  %%% todo maybe put noalign in here
 
-
 \resetmidruleX
 
-%% https://tex.stackexchange.com/questions/145084/what-is-the-function-of-noalign
-%\begin{tabular}{rclc@{\midruleX}}  % inject midrule
-%\toprule
-%Number  & Student Id    & Name  & Score\\\midrule\resetmidruleX  % reset to 0
-%1       & 14-001    & Andy  & 75 \\
-%2       &           &       &    \\
-%3       &           &       &    \\
-%4       &           &       &    \\
-%5       &           &       &    \\
-%6       &           &       &    \\
-%7       &           &       &    \\
-%8       &           &       &    \\
-%9       &           &       &    \\\resetmidruleX
-%10      &           &       &    \\%\noalign{\resetmidruleX} % noalig required to not cause error with bottomrule, but that's oka because it should be used on row 9 anyway
-%\bottomrule
-%\end{tabular}
+
 
 
 %%%%
 
 %%% gray midrule and gray cmidrule
-
-\providecommand{\gmidrule}{\arrayrulecolor{lightgray}\specialrule{\lightrulewidth}{0.4\aboverulesep}{0.6\belowrulesep}\arrayrulecolor{black}}
+\aboverulesep=0.0ex
+\belowrulesep=0.5ex
+\providecommand{\gmidrule}{\arrayrulecolor{lightgray}\specialrule{\lightrulewidth}{0.5\aboverulesep}{0.5\belowrulesep}\arrayrulecolor{black}}
+\cmidrulewidth=\lightrulewidth
 
 %%% use gcmidrule for a gray "c" midrule
 % Copy \cmidrule from
@@ -113,7 +106,7 @@
     \global\advance\@cmidlb-\@cmidla
     \global\@thisrulewidth=#3
     \@setrulekerning{#4}
-    \ifnum\@lastruleclass=\z@\vskip 0.4\aboverulesep\fi
+    \ifnum\@lastruleclass=\z@\vskip 0.5\aboverulesep\fi
     \ifnum0=`{\fi}\@gtempa
     \noalign{\ifnum0=`}\fi\futurenonspacelet\@tempa\@xgcmidrule}
 \def\@xgcmidrule{%
@@ -123,7 +116,7 @@
    \else \ifx\@tempa\morecmidrules
        \vskip \cmidrulesep
        \global\@lastruleclass=\@ne\else
-       \vskip 0.6\belowrulesep
+       \vskip 0.5\belowrulesep
        \global\@lastruleclass=\z@
    \fi\fi
    \ifnum0=`{\fi}
@@ -167,30 +160,17 @@
 
 
 
-
-
-%%%  tabular commands
-
-\newcommand{\TabColNum}{\luadirect{tex.print(lutabt.get_TabColNum())}} % prints the current column number of tabular
-\newcommand{\NumTabCols}{\luadirect{tex.print(lutabt.NumTabCols)}} % prints the total num columns of tabular
-\newcounter{RowNumCnt}
-\setcounter{RowNumCnt}{1}
-
 \let\oldtabular\tabular
 \RenewExpandableDocumentCommand{\tabular}{ O{c} m }{%
-  \setcounter{RowNumCnt}{1}%
-  \luadirect{lutabt.calc_NumTabCols(\luastringN{#2})}%
-  \luadirect{lutabt.NumTabColsMX = 0}% fall back if calc doesnt work for some reason
-  \oldtabular[#1]{@{\stepcounter{RowNumCnt}}#2@{\luadirect{lutabt.get_TabColNum()}}}%
+  \luadirect{lutabt.set_col_spec(\luastringN{#2})}%
+  \oldtabular[#1]{\ltt@ltrim#2\ltt@rtrim}%
 }
 
 \expandafter\let\expandafter\oldtabulars\csname tabular*\endcsname
 \expandafter\let\expandafter\endoldtabulars\csname endtabular*\endcsname
 \RenewDocumentEnvironment{tabular*}{ m O{c} m }{%
-  \setcounter{RowNumCnt}{1}%
-  \luadirect{lutabt.calc_NumTabCols(\luastringN{#3})}%
-  \luadirect{lutabt.NumTabColsMX = 0}% fall back if calc doesnt work for some reason
-  \begin{oldtabulars}{#1}[#2]{@{\stepcounter{RowNumCnt}}#3@{\luadirect{lutabt.get_TabColNum()}}}
+  \luadirect{lutabt.set_col_spec(\luastringN{#3})}%
+  \begin{oldtabulars}{#1}[#2]{\ltt@ltrim#3\ltt@rtrim}%
 }{%
   \end{oldtabulars}%
 }
@@ -211,7 +191,45 @@
 )}}
 
 
+\NewDocumentCommand{\setMCrepl}{m m}{\luadirect{
+  lutabt.col_replaces.#1 = '#2'
+}}
+\NewDocumentCommand{\setMChordef}{ m m}{\luadirect{
+  lutabt.col_hor_repl.#1 = '#2'
+}}
+\NewDocumentCommand{\setMCverdef}{ m m}{\luadirect{
+  lutabt.col_ver_repl.#1 = '#2'
+}}
+\NewDocumentCommand{\addMCsicol}{ m }{\luadirect{
+  lutabt.SI_cols[\string##lutabt.SI_cols+1] = '#1'
+}}
+
 
 
 \ProcessOptions
 
+
+
+
+
+
+
+%%%  OLD STUFF,
+%% before I had a fall-back for counting columns (just calculate current column on last column once)
+%%   and kept track of row numbers. I felt that this wasn't needed, so I've removed.
+%\newcommand{\TabColNum}{\luadirect{tex.print(lutabt.get_TabColNum())}} % prints the current column number of tabular
+%\newcommand{\NumTabCols}{\luadirect{tex.print(lutabt.NumTabCols)}} % prints the total num columns of tabular
+%\newcounter{RowNumCnt}
+%\setcounter{RowNumCnt}{1}
+%  \setcounter{RowNumCnt}{1}%
+%  \luadirect{lutabt.NumTabColsMX = 0}% fall back if calc doesnt work for some reason
+%  \setcounter{RowNumCnt}{1}%
+%  \luadirect{lutabt.NumTabColsMX = 0}% fall back if calc doesnt work for some reason
+%\DeclareOption{notrimx}{
+%  \global\newcolumntype{\ltt@ltrim}{!{\stepcounter{RowNumCnt}}}
+%%  \global\newcolumntype{\ltt@rtrim}{!{\luadirect{lutabt.get_TabColNum()}}}
+%}
+%\DeclareOption{trimx}{
+%  \newcolumntype{\ltt@ltrim}{@{\stepcounter{RowNumCnt}}}
+%%  \newcolumntype{\ltt@rtrim}{@{\luadirect{lutabt.get_TabColNum()}}}
+%}

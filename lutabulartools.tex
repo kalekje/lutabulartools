@@ -1,6 +1,6 @@
 % Kale Ewasiuk (kalekje@gmail.com)
 % +REVDATE+
-% Copyright (C) 2021 Kale Ewasiuk
+% Copyright (C) 2021-2022 Kale Ewasiuk
 %
 % Permission is hereby granted, free of charge, to any person obtaining a copy
 % of this software and associated documentation files (the "Software"), to deal
@@ -61,11 +61,20 @@
 \title{lutabulartools}
 \subtitle{some useful tabular tools (LuaLaTeX-based)}
 
+\usepackage{tabularx}
+\usepackage{siunitx}
+
 \begin{document}
+
+%  todo: can improve naming... set col spec to a table instead of a string
+
+
 \maketitle
 
 lutabulartools is a package that contains a few useful macros to help with tables.
-Most functions require LuaLaTeX. The following packages are loaded:
+Most functions require LuaLaTeX.
+This package redefines the {\ttfamily tabular} and {\ttfamily tabular*} environments.
+The following packages are loaded:
 \texttt{
 {booktabs},
 {multirow},
@@ -78,51 +87,148 @@ Most functions require LuaLaTeX. The following packages are loaded:
 {penlight},
 }
 
+\section{Options}
+The author likes tables with left and right-most columns flush to the end.
+Since the \cmd{tabular} env is redefined in this, the author took the liberty to
+automatically pad the \cmd{tabular} cell spec with \cmd{@{}} on each end.
+If you don't want this, you can pass \cmd{notrim} to the package. Or,
+you can manually fix it in a \cmd{tabular} with \cmd{!{}} like so:
+
+\begin{LTXexample}
+\begin{tabular}{!{}c!{}}\toprule
+Xyz\\\bottomrule    \end{tabular}
+\end{LTXexample}
+
+
 \section{\texttt{\textbackslash MC} -- Magic Cell}
 \texttt{\textbackslash MC} (magic cell) combines the facilities of
 \cmd{\multirow} and \cmd{\multicolumn} from the \texttt{multirow} package, and \cmd{\makcell} from the titular package.
 With the help of LuaLaTeX, it takes an easy-to-use cell specification and employs said commands as required.
+\cmd{\MC} will not work properly if your table is only 1 column wide (you probably don't need \cmd{MC} in that case anyway...).
 Here is the usage:
 
 \texttt{\textbackslash MC * [cell spec] <cell format> (override multicolumn col) \{contents\} }
 
 \llcmd{*}This will wrap the entire command in \{\}. This is necessary for \texttt{siunitx} single-column width columns.
-However, the \tMC\  command attempts to detect this automatically.
+However, the \cmd{\MC} command attempts to detect this automatically.
 
 \llcmd{[cell spec]}%
 Any letters placed in this argument are used for cell alignment.
 You can use one of three: \qcmd{t}, \qcmd{m}, \qcmd{b} for top, middle, bottom (vertical alignment),
 or \qcmd{l}, \qcmd{c}, \qcmd{r} for horizontal alignment.
-By default, \tMC\   will try to autodetect the horizontal alignment based on the current column.
+By default, \cmd{\MC}   will try to autodetect the horizontal alignment based on the current column.
 If it can't, it will be left-aligned.
-The default vertical alginment is top.
+The default vertical alginment is top. More on this in section \ref{s.def}.
 
 This argument can also contain two integers, separated by a comma (if two are used).
 \qcmd{C,R}, \qcmd{C}, or \qcmd{,R} are a valid inputs,
-where R=rows (int), and C=columns, (int).
+where \cmd{R}=rows (int), and \cmd{C}=columns, (int).
 If you want a 1 column wide, multirow cell,
-you can pass \qcmd{,R}. These numbers can be negative.
-If no spec is passed, (argument empty), \tMC\
+you can pass \qcmd{,R}. These numbers can be negative (positive numbers occupy columns to the right
+and rows below, and negative numbers occupy columns to the left and rows above).
+If no spec is passed, (argument empty), \cmd{\MC}
 acts like a \texttt{makecell}.
 Additionally, you can pass \qcmd{+} in place of C (number of columns wide),
 and it will make the cell width fill until the end of the current row.
 
 Examples:\\
 \qcmd{\MC[2,2]} means two columns wide, two rows tall.\\
-\qcmd{\MC[2,1]} or \qcmd{\MC[2]} or  means two columns wide, one row tall.\\
+\qcmd{\MC[2,1]} or \qcmd{\MC[2]}  means two columns wide, one row tall.\\
 \qcmd{\MC[1,2]} or \qcmd{\MC[,2]} means one column wide, two rows tall.\\
+\qcmd{\MC[+,2]}, if placed in the first column, occupies the entire row and is two rows tall.\\
+\qcmd{\MC[+,2]}, if placed in the second column, occupies the second column to the end of the table and is two rows tall.\\
 In any of these examples, you can place the alignment letters anywhere.
+So, \qcmd{\MC[l1,2b]} and \qcmd{\MC[1,2 lb]} are both left-bottom aligned (spaces are ignored).
 
 
 \llcmd{(override}%
 You may want to adjust the column specification of a multicolumn  cell,\\
 \llcmd{multicolumn)}for example, using
-\texttt{@\{\}c@\{\}} to remove padding between the cell.
+\texttt{(@\{\}c@\{\})} to remove padding between the cell.
+
 
 \llcmd{<cell format>}%
 You can place formatting like \cmd{\bfseries} here.
 
-Here's an example.
+
+\subsection{Defaults}\label{s.def}
+The \cmd{tabular[*]} environment is re-defined to use Lua pattern matching
+to parse the column specification of the table. This is done to determine how many columns there are,
+and what the current column type is, even if specifications like \cmd{r@{.}l*{3}{r}} are used.
+If you have defined a column that expands many, you should register it with
+\cmd{\setMCrepl{?}{??}} where \cmd{?} is your column and \cmd{??} is what it expands to.
+You can also specify default horizontal and vertical alignments (ie if alignment not passed to \cmd{\MC})
+for an arbitrary column by \cmd{\setMChordef{?}{l|r|c}} and\\
+\cmd{\setMChordef{?}{t|m|b}}, where \cmd{?} is the column.
+To add a column that should be surrounded by brackets for \cmd{siunitx} purposes, do so with \cmd{\addMCsicol{?}}.
+S is included by default.
+
+
+\newpage
+
+\subsection{Examples}
+
+\let\nl\\
+
+
+\subsubsection{A good use for headers}
+\begin{LTXexample}
+\begin{tabular}{ l l l }\toprule
+\MC[+m]<\itshape>{A Decent
+                Example}\\\midrule
+    & \MC[2m]{Heading} \\\cmidrule{2-}
+\MC[b,-2]{Multi\\Line}  & A & B   \\\midrule
+\end{tabular}
+\end{LTXexample}
+
+\subsubsection{A small example}
+
+
+\begin{LTXexample}
+\begin{tabular}{ l l l }\midrule
+ A & \MC[mc2,2]{Lttrs}    \\
+ B &                       \\
+ 1 & A & B   \\
+\end{tabular}
+\end{LTXexample}
+
+
+\subsubsection{A small bad example}
+Notice that the top-aligned p-column
+doesn't play particularly well with the middle aligned \cmd{\MC}
+\begin{LTXexample}
+\begin{tabular}{ p{1cm} l }\toprule
+   hello\newline world
+        & \MC[mr]{11\\2} \\
+\end{tabular}
+\end{LTXexample}
+
+
+\subsubsection{If you insist on vertical lines}
+\begin{LTXexample}
+\begin{tabular}{|c|c|c|} \hline
+1 & 2 & 3\\\hline
+4 & \MC[2,2cm](@{}c@{}|)%
+    <\ttfamily>{5}\\\cline{1-1}
+  & \MC[2](r|){} \\\hline%hacky fix
+6 & 7 & 8\\\hline
+\end{tabular}
+\end{LTXexample}
+
+
+\subsubsection{A perhaps useful example}
+
+\begin{LTXexample}
+\begin{tabularx}{\linewidth}{S[table-format=2.1,table-alignment=left]X}
+% err & ... \\% ERROR, not wrap
+  \MC{Error,\%} & Comment \\% MC helps
+ 3.1 & \MC[,2]{multi-line\\comment}\\
+ 10.1& \\
+ \MC[2c]{... ...} \\
+\end{tabularx}
+\end{LTXexample}
+
+\subsubsection{A messy example}
 
 \begin{LTXexample}
 \begin{tabular}{| c | c | c | c | c | c |}\toprule
@@ -136,16 +242,6 @@ Here's an example.
 \end{LTXexample}
 
 
-Here's another
-\begin{LTXexample}
-\begin{tabular}{|c|c|c|} \hline
-1 & 2 & 3\\\hline
-4 & \MC[2,2cm](@{}c@{}|)%
-    <\ttfamily>{5}\\\cline{1-1}
-  & \MC[2](r|){} \\\hline%hacky fix
-6 & 7 & 8\\\hline
-\end{tabular}
-\end{LTXexample}
 
 
 
@@ -153,17 +249,30 @@ Here's another
 
 %\textbackslash MC[<spec>]{<contents}
 
-\subsection{Notes}
-This package redefines the {\ttfamily tabular} and {\ttfamily tabular*} environments.
-It uses Lua pattern matching to parse the column specification of the table to know how many columns there are,
-and what the current column type is. If you have defined a column that creates many, it will not work.
-This will be worked out in later package revisions.
-%But, to know how many columns there are you, you will have
-%either have to manually set todo the lua variable before the table, or,
-%in the last column of the first row, \texttt{get\_tab\_colnum ()}.
-%The above Lua function can be used to get the current column number.
-%You will also remove the ability for this package to know what the current column spec is
 
+%\subsubsection{And another one}
+%
+%\begin{LTXexample}
+%\setMChordef{l}{r}
+%\setMCverdef{l}{b}
+%% change deflt alignment ^
+%\newcolumntype{e}{ll}
+%\setMCrepl{e}{ll}
+%% e -> l l  ^
+%\begin{tabular}{l l l e}\toprule
+%aaaaa & bbb & ccc & eee & fff\\
+%\MC{aaaaa}\\
+%\MC{a}\\\midrule
+%\MC{a\\bbbbb}  & x\\\midrule
+%\makecell[br]{a\\b} & x\\\midrule
+%\MC[+]{--- ---}\\
+%\end{tabular}
+%\end{LTXexample}
+%% WHY ISNT THIS RIGHT?
+
+
+
+\newpage
 
 
 \section{Some additional rules}
@@ -184,11 +293,23 @@ override it for a specific rule by placing \qcmd{r} or \qcmd{l} with the span sp
 Here's an example:
 
 \begin{LTXexample}
-\begin{tabular}{c c c c c c}\toprule
- 1 & 2 & 3 & 4 & 5 & 6\\ \cmidrule{+1}  % rule on last column
- 1 & 2 & 3 & 4 & 5 & 6\\ \cmidrules{1,3-+3,+} % rule on first col, third to third last col, and last col
- 1 & 2 & 3 & 4 & 5 & 6\\ \cmidrules{1,3-+3rl,+} % same as above, but trim middle
- 1 & 2 & 3 & 4 & 5 & 6\\ \cmidrules(l){1,r3-+3,+1}% trim left for all, but only trim right for middle rule
+\begin{tabular}{c c c c c c}
+ 1 & 2 & 3 & 4 & 5 & 6\\
+    \cmidrule{+1}  % rule on last column
+ 1 & 2 & 3 & 4 & 5 & 6\\
+    \cmidrules{1,3-+3,+} % rule on first col, third to third last col, and last col
+ 1 & 2 & 3 & 4 & 5 & 6\\
+    \cmidrules{1,3-+3rl,+} % same as above, but trim middle
+ 1 & 2 & 3 & 4 & 5 & 6\\
+    \cmidrules(l){1,r3-+3,+1}% trim left for all, but only trim right for middle rule
+ 1 & 2 & 3 & 4 & 5 & 6\\
+    \gcmidrule{+1}  % rule on last column
+ 1 & 2 & 3 & 4 & 5 & 6\\
+    \gcmidrules{1,3-+3,+} % rule on first col, third to third last col, and last col
+ 1 & 2 & 3 & 4 & 5 & 6\\
+    \gcmidrules{1,3-+3rl,+} % same as above, but trim middle
+ 1 & 2 & 3 & 4 & 5 & 6\\
+    \gcmidrules(l){1,r3-+3,+1}% trim left for all, but only trim right for middle rule
 \end{tabular}
 \end{LTXexample}
 
@@ -205,13 +326,15 @@ You can change the step size and what kind of midrule you prefer.
 \end{verbatim}
 
 
-Usage: Insert midrulex at the end of each row using  the column spec.
+To use, insert \cmd{@{\midrulex}} at the end of each row using the tabular column spec.
 Before you want counting to begin, you should
-apply resetmidruleX (also to avoid header rows).
+apply \cmd{\resetmidruleX}  to avoid header rows being counted.
+Use \cmd{\noalign{\resetmiduleX}} if you need place a rule on the same line or in a cell.
+
 
 \begin{LTXexample}
-\def\midruleXstep{4}
-\def\midruleXrule{\cmidrules{1,3-4}}
+\def\midruleXstep{3}
+\def\midruleXrule{\cmidrules{1,3-4r}}
 \begin{tabular}{rclc@{\midruleX}}
                 % ^^^ inject midrule
 \toprule

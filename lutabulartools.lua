@@ -1,6 +1,6 @@
 --% Kale Ewasiuk (kalekje@gmail.com)
 --% +REVDATE+
---% Copyright (C) 2021 Kale Ewasiuk
+--% Copyright (C) 2021-2022 Kale Ewasiuk
 --%
 --% Permission is hereby granted, free of charge, to any person obtaining a copy
 --% of this software and associated documentation files (the "Software"), to deal
@@ -24,31 +24,19 @@
 
 local ltt = {}
 
---todo clean up the code, make some stuff local
---todo maybe add the penlight lua table to latex tabular?
-
---integrate current cell
---todo check if S[] column cells work!!!
---todo might be smarter to just append this to tabular commands and read argument
-
--- Initialize counter variable
-ltt.NumTabCols = 0
-ltt.NumTabColsAbv = 0 -- num of tab columns  if above 1
-ltt.TabColSpec = ''
-ltt.TabColSpecAbv = '' -- tab column spec if above 1
-ltt.CurTabColAbv = '' -- current tab column spec if above 1
-ltt.TabColNum = 0
-ltt.NumBkts = 0
-ltt.NumTabColsMX = 0
+ltt.col_spec1 = {} -- column spec if one column wide (since makcell nests a tabular, preserve col_spec below)
+ltt.col_spec = {} -- tab column spec if above 1
+ltt.col = '' -- current column spec, single char, only applies to tabular with more than 1 column
+ltt.col_num = 1 -- current column number
 
 
---todo re=enable
 local glue_t, unset_t, tabskip_st = node.id'glue', node.id'unset'
 local tabskip_st = table.swapped(node.subtypes'glue').tabskip
 assert(tabskip_st)
 
 
-function ltt.get_TabColNum()
+function ltt.set_col_num()
+    -- register current column info (column number and specification)
     local nest
     for i = tex.nest.ptr, 1, -1 do
       local tail = tex.nest[i].tail
@@ -62,56 +50,31 @@ function ltt.get_TabColNum()
       for _, sub in node.traverse_id(unset_t, nest.head) do
         col = col + sub + 1
       end
-      ltt.TabColNum = col
+      ltt.col_num = col
     else
-      ltt.TabColNum = 1
+      ltt.col_num = 1
     end
-    ltt.CurTabColAbv = ltt.TabColSpecAbv:sub(ltt.TabColNum,ltt.TabColNum)
-    ltt.NumTabColsMX = math.max(ltt.NumTabColsMX, ltt.TabColNum) -- a different way to calculate total cols
-    return ltt.TabColNum
+    ltt.col = ltt.col_spec[ltt.col_num]
 end
 
 
-function ltt.get_TabRowNum()
-    return tex.count['c@RowNumCnt'] -- access latex counter
-end
-
--- The next function computes the number of columns from
--- contents of string 'zz'
-function ltt.calc_NumTabCols( zz )
-    --help_wrt(zz, 'col spec OG')
-    -- -- NOT NEEDED: zz = zz:gsub ( "^.-(%b{}).-$", "%1" )  -- retain the first "{....}" substring
+function ltt.set_col_spec(zz)
+    -- contents of string 'zz'
+    -- register the table column specification
     zz = zz:gsub ( "%*%s-{(%d-)}%s-(%b{})" ,     -- expand expressions such as "*{5}{l}" to "lllll"
             function(y, z ) z = z:sub (2 , -2)  return string.rep (z, y) end ) --
     zz = zz:gsub ( "%b{}" , "" ) -- omit all stuff in curly braces and square
     zz = zz:gsub ( "%b[]" , "" )
     zz = zz:gsub ( "[@!|><%s%*\']" , "" )  -- some more characters to ignore
-    -- todo: any columns defined that break into more than one column should be expanded here
-    --help_wrt(zz, 'col spec CLEAN')
-    ltt.TabColSpec = zz -- stripped column spec with no {} or <
-    ltt.NumTabCols = string.len(ltt.TabColSpec)
-    if ltt.NumTabCols > 1 then
-        ltt.TabColSpecAbv = ltt.TabColSpec
-        ltt.NumTabColsAbv = ltt.NumTabCols
+    zz = zz:gsub('%a', ltt.col_replaces) -- sub extra column
+    _col_spec = zz:totable() -- requires pl extras
+    --help_wrt(_col_spec, 'helpme')
+    if #_col_spec > 1 then
+        ltt.col_spec = _col_spec
+    else
+        ltt.col_spec1 = _col_spec
     end
 end
-
---todo fix square brackets after letters, expand multiple
---calc_NumTabCols('ss')
---calc_NumTabCols('*{6}{s}')
---calc_NumTabCols('l*{6}{l}')
---calc_NumTabCols('lll')
---calc_NumTabCols('ll[]')
---calc_NumTabCols('ll[]*{6}{l}')
---calc_NumTabCols('*{6}{l}')
---calc_NumTabCols('y*{6}{sq}x')
---print(_TabColSpec.. '<---Column spec')
-
---http://ctan.mirror.rafal.ca/macros/latex/contrib/multirow/multirow.pdf
---http://ctan.mirror.colo-serv.net/macros/latex/contrib/makecell/makecell.pdf
--- todo CONSIDER THIS
--- https://tex.stackexchange.com/questions/331716/newline-in-multirow-environment
-
 
 
 --todo
@@ -122,6 +85,8 @@ end
 
 function ltt.MagicCell(s0,spec,mcspec,pre,content)
     --
+    ltt.set_col_num() -- register current column number and column spec
+
     local STR = ''
     reset_bkt_cnt()
 
@@ -132,8 +97,8 @@ function ltt.MagicCell(s0,spec,mcspec,pre,content)
     h, mcspec, c = ltt.get_HColSpec(h, mcspec, c)  -- infer horizontal alignment, num columns
 
     --help_wrt(_CurTabColAbv,'current column')
-    if s0 == _xTrue or (pl.List({'S', 'Q', 'L', 'R'}):contains(ltt.CurTabColAbv) -- special columns for SI
-            and c == '') then -- multicolumn cannot have {} around it todo test with siunitx, num rows, num columns
+    if s0 == _xTrue or (pl.List(ltt.SI_cols):contains(ltt.col) -- special columns for SI
+            and c == '') then -- multicolumn cannot have {} around it
         STR = STR .. '{'                                       -- multirow and makcell must have {} around it S column is used
         add_bkt_cnt()
     end
@@ -167,7 +132,7 @@ end
 
 
 function ltt.parse_MagicCell_spec(spec)
-    local mrowsym = '*'
+    local mrowsym = '*' -- *  = natural width, = will match p{2cm} for example
     local skipmakecell = false
     if string.find(spec, '=')  then
         spec = spec:gsub('=', '')
@@ -175,9 +140,9 @@ function ltt.parse_MagicCell_spec(spec)
         skipmakecell = true
     end
 
-    spec = spec:lower():gsub('%s','')  -- take lower case and remove
+    spec = spec:lower():gsub('%s','')  -- take lower case and remove space
     local vh, rc = spec:gextract('%a')  -- extract characters
-    local v = vh:gfirst({'t', 'm', 'b'}) or 't'
+    local v = vh:gfirst({'t', 'm', 'b'}) or ltt.col_ver_repl[ltt.col] or 't'
     local h = vh:gfirst({'l', 'c', 'r'}) or ''
     v = v:gsub('m', 'c')
 
@@ -191,11 +156,45 @@ function ltt.parse_MagicCell_spec(spec)
 end
 
 
-ltt.TabColMapping = { -- horizontal cell alignment that multicolumn should use if () or [hori] not passed to func
+function ltt.get_HColSpec(h, mcspec, c) -- take horizontal alignment
+    -- c is num columns, h is horizontal alginment,
+    --Assumes _TabColNum was calculated previosly
+     if c == '+' then  -- fill row to end
+        c =  tostring(#ltt.col_spec -  ltt.col_num + 1)
+    end
+    if h == '' then -- if horizontal not provided, use declared column
+        h = ltt.col_hor_repl[ltt.col] or 'l'
+    end
+    if c ~= '' then -- only make new mcspec if column nums > 0
+        if mcspec == '' then -- and if no mcspec was passed
+            mcspec = h
+            if ltt.col_num == 1 then -- if first column, auto detect padding
+                mcspec = '@{}'..mcspec
+            end
+            if (ltt.col_num + tonumber(c) - 1) == #ltt.col_spec then  -- if end on last column
+                mcspec = mcspec..'@{}'
+            end
+        else -- if mcspec if given, extract the alignment
+            ltt.set_col_spec(mcspec)
+            h = ltt.col_spec1[1] -- get 1 character column spec from mcspec and override h
+        end
+    end
+    return h, mcspec, c
+end
+
+
+
+ltt.col_ver_repl = {
+m = 'm',
+M = 'm',
+b = 'b',
+}
+
+ltt.col_hor_repl = { -- horizontal cell alignment that multicolumn should use if () or [hori] not passed to func
     l = 'l',
     c = 'c',
     r = 'r',
-    p = 'p',
+    p = 'l',
     P = 'c',
     X = 'l',
     Y = 'c',
@@ -206,35 +205,22 @@ ltt.TabColMapping = { -- horizontal cell alignment that multicolumn should use i
     C = 'c',
 }
 
-function ltt.get_HColSpec(h, mcspec, c) -- take horizontal alignment
-    -- c is num columns, h is horizontal alginment,
-    --Assumes _TabColNum was calculated previosly
-    ltt.get_TabColNum()
-     if c == '+' then  -- fill row to end
-        c =  tostring(ltt.NumTabColsAbv -  ltt.TabColNum + 1)
-    end
-    if h == '' then -- if horizontal not provided, use declared column
-        h = ltt.TabColMapping[ltt.CurTabColAbv] or 'l'
-    end
-    if c ~= '' then -- only make new mcspec if column nums > 0
-        if mcspec == '' then -- and if no mcspec was passed
-            mcspec = h
-            if ltt.TabColNum == 1 then -- if first column, auto detect padding
-                mcspec = '@{}'..mcspec
-            end
-            if (ltt.TabColNum + tonumber(c) - 1) == ltt.NumTabColsAbv then  -- if end on last column
-                mcspec = mcspec..'@{}'
-            end
-        else -- if mcspec if given, extract the alignment
-            ltt.calc_NumTabCols(mcspec)
-            h = ltt.TabColSpec -- get 1 character column spec from mcspec and override h
-        end
-    end
-    return h, mcspec, c
-end
+-- allow user to place their own replacements in for a table, say if they define a column that expands to multiple
+ltt.col_replaces = {
+--x = 'lll'
+}
+
+ltt.SI_cols = {'S', 'N', 'Q', 'L', 'R'}
+--ltt.SI_cols = {'S'}
+--ltt.SI_cols = {'N'}
 
 
--- midrule stuff
+
+
+
+-----
+--- midrule stuff
+-----
 
 function ltt.get_midrule_col(s)
     if string.find(s, '+')  then
@@ -242,14 +228,11 @@ function ltt.get_midrule_col(s)
         if (s == '') or (s == '0') then
             s = 1
         end
-        s = tostring(ltt.NumTabColsAbv - tonumber(s) + 1) -- use number of tabular columns above 0,
+        s = tostring(#ltt.col_spec - tonumber(s) + 1) -- use number of tabular columns above 0,
     end
     return s
 end
 
---todo if comma present, create multiple according to spec. Also allow LR in []
-
---- midrule stuff ---
 
 function ltt.make1cmidrule(s, r, c, cmd) -- s=square r=round c=curly
     cmd = '\\'..cmd
@@ -283,4 +266,16 @@ function ltt.makecmidrules(s, r, c, cmd)
 end
 
 
+--help_wrt('TEST COL ')
+--for _, s in ipairs{ 'll', '*{6}{s}', 'l*{6}{l}', 'lll', 'll[]', 'll[]*{6}{l}', '*{6}{l}', 'y*{6}{sq}x', } do
+--    ltt. set_col_spec(s)
+--    help_wrt(ltt.col_spec,s)
+--end
+
 return ltt -- lutabulartools
+
+
+
+--http://ctan.mirror.rafal.ca/macros/latex/contrib/multirow/multirow.pdf
+--http://ctan.mirror.colo-serv.net/macros/latex/contrib/makecell/makecell.pdf
+-- https://tex.stackexchange.com/questions/331716/newline-in-multirow-environment
