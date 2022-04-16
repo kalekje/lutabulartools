@@ -22,7 +22,22 @@
 --% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
 --% OR OTHER DEALINGS IN THE SOFTWARE.
 
+
+local pl = _G['penlight'] or _G['pl'] -- penlight for this namespace is pl
+if (__PL_EXTRAS__ == nil) or  (__PENLIGHT__ == nil) then
+    tex.sprint('\\PackageError{yamlvars}{penlight package with extras (or extrasnoglobals) option must be loaded before this package}{}')
+end
+
 local ltt = {}
+
+
+ltt.debug = false
+function ltt.debugtalk(s, ss)
+    ss = ss or ''
+    if ltt.debug then
+        pl.tex.help_wrt(s, ss..' (lutabulartools)')
+    end
+end
 
 ltt.col_spec1 = {} -- column spec if one column wide (since makcell nests a tabular, preserve col_spec below)
 ltt.col_spec = {} -- tab column spec if above 1
@@ -55,6 +70,7 @@ function ltt.set_col_num()
       ltt.col_num = 1
     end
     ltt.col = ltt.col_spec[ltt.col_num]
+    ltt.debugtalk('col_num='..ltt.col_num..'; col_spec='..ltt.col,'set_col_num')
 end
 
 
@@ -74,6 +90,7 @@ function ltt.set_col_spec(zz)
     else
         ltt.col_spec1 = _col_spec
     end
+    ltt.debugtalk(ltt.col_spec,'set_col_spec')
 end
 
 
@@ -88,7 +105,7 @@ function ltt.MagicCell(s0,spec,mcspec,pre,content)
     ltt.set_col_num() -- register current column number and column spec
 
     local STR = ''
-    reset_bkt_cnt()
+    pl.tex.reset_bkt_cnt()
 
     local v, h, r, c, mrowsym, skipmakecell = ltt.parse_MagicCell_spec(spec) -- get v/h align, number rows/columns
 
@@ -96,21 +113,23 @@ function ltt.MagicCell(s0,spec,mcspec,pre,content)
 
     h, mcspec, c = ltt.get_HColSpec(h, mcspec, c)  -- infer horizontal alignment, num columns
 
+    ltt.debugtalk(pl.List{v, h, r, c, mcspec}:join'; ','v, h, r, c, mcspec')
+
     --help_wrt(_CurTabColAbv,'current column')
     if s0 == _xTrue or (pl.List(ltt.SI_cols):contains(ltt.col) -- special columns for SI
             and c == '') then -- multicolumn cannot have {} around it
         STR = STR .. '{'                                       -- multirow and makcell must have {} around it S column is used
-        add_bkt_cnt()
+        pl.tex.add_bkt_cnt()
     end
 
     if c ~= '' then
         STR = STR .. "\\multicolumn{"..c.."}{"..mcspec.."}{"
-        add_bkt_cnt()
+        pl.tex.add_bkt_cnt()
     end
 
     if r ~= '' then
         STR = STR .."\\multirow["..v.."]{"..r.."}{"..mrowsym.."}{" -- optional arg here
-        add_bkt_cnt()
+        pl.tex.add_bkt_cnt()
     end
 
     if not skipmakecell then
@@ -119,14 +138,15 @@ function ltt.MagicCell(s0,spec,mcspec,pre,content)
         end
 
         STR = STR.."\\makecell[{"..v.."}{"..h.."}]{"
-        add_bkt_cnt()
+        pl.tex.add_bkt_cnt()
     else
         content = content:gsub('\\\\', '\\newline')
     end
 
-    STR = STR..content..close_bkt_cnt()
+    STR = STR..content..pl.tex.close_bkt_cnt()
     --Troubleshooting
     --help_wrt(STR..' <<< magic cell string')
+    ltt.debugtalk(STR,'MagicCell')
     tex.sprint(STR)--tex print the STR
 end
 
@@ -252,6 +272,8 @@ function ltt.make1cmidrule(s, r, c, cmd) -- s=square r=round c=curly
     c = ltt.get_midrule_col(t[1])..'-'..ltt.get_midrule_col(t[2])
     cmd = cmd..'{'..c..'}'
     --help_wrt(cmd)
+
+    ltt.debugtalk(cmd,'make1cmidrule')
     tex.print(cmd)
 end
 

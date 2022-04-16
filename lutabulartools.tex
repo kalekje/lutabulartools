@@ -57,12 +57,17 @@
 
 \newcommand{\tMC}{\cmd{\\MC}}
 
+\usepackage[pl,extrasnoglobals]{penlight}
+
+
 \RequirePackage{lutabulartools}
 \title{lutabulartools}
 \subtitle{some useful tabular tools (LuaLaTeX-based)}
 
 \usepackage{tabularx}
 \usepackage{siunitx}
+
+\lttdebugON
 
 \begin{document}
 
@@ -99,6 +104,14 @@ you can manually fix it in a \cmd{tabular} with \cmd{!{}} like so:
 Xyz\\\bottomrule    \end{tabular}
 \end{LTXexample}
 
+\subsection{Debugging}
+You can toggle log output debugging with \cmd{\lttdebugON} and \cmd{\lttdebugOFF}.
+The messages will be printed in a format like so:
+\begin{verbatim}
+vvvvv msg1 (lutabulartools)
+msg2
+^^^^^
+\end{verbatim}
 
 \section{\texttt{\textbackslash MC} -- Magic Cell}
 \texttt{\textbackslash MC} (magic cell) combines the facilities of

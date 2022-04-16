@@ -33,10 +33,12 @@
 \RequirePackage{xcolor}
 \RequirePackage{colortbl}
 \RequirePackage{luacode}
-\RequirePackage[pl,extras]{penlight} % NEEDED
+\RequirePackage{penlight} % NEEDED, extras option must be used so penlight should be loaded before this...
 
 \luadirect{lutabt = require('lutabulartools')}
 
+\newcommand{\lttdebugON}{\luadirect{lutabt.debug = true}}
+\newcommand{\lttdebugOFF}{\luadirect{lutabt.debug = true}}
 
 \newcolumntype{\ltt@ltrim}{@{}}
 \newcolumntype{\ltt@rtrim}{@{}}
