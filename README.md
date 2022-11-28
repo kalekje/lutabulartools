@@ -1,6 +1,6 @@
 # lutabulartools
 
-This LuaLaTeX package offers some useful macros for tabular matter. The `\MC` command it provides allows one to specify a multi-row and or multi-column cell with minimal syntax. The package loads `booktabs` and adds a gray midrule, and allows a user to specify multiple `\cmidrules` with one command. The [github repo](https://github.com/kalekje/lutabulartools) has an MS Excel
+This LuaLaTeX package offers some useful macros for tabular matter. The `\MC` command it provides allows one to specify a multi-row and or multi-column cell with minimal syntax. The package loads `booktabs` and adds a gray midrule, and allows a user to specify multiple `\cmidrules` with one command, or produce midrules every Xth row with `\midruleX`. The [github repo](https://github.com/kalekje/lutabulartools) has an MS Excel
 macro-enabled spreadsheet named "LaTeX-Tabular-Generator.xlsm" to help make tables in LaTeX.
 
 

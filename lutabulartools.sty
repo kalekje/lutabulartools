@@ -40,44 +40,20 @@
 \newcommand{\lttdebugON}{\luadirect{lutabt.debug = true}}
 \newcommand{\lttdebugOFF}{\luadirect{lutabt.debug = true}}
 
-\newcolumntype{\ltt@ltrim}{@{}}
-\newcolumntype{\ltt@rtrim}{@{}}
-\DeclareOption{notrim}{
-  \newcolumntype{\ltt@ltrim}{}
-  \newcolumntype{\ltt@rtrim}{}
+\newcolumntype{\lttltrim}{}
+\newcolumntype{\lttrtrim}{}
+
+
+%%% midrule every X rows
+
+\def\midruleX{\aftergroup\aftergroup\aftergroup\midruleX@aux}
+\def\midruleX@aux{\luadirect{lutabt.mrX.midruleX('')}}  % todo argument for vadjust or noalign??
+\NewDocumentCommand{\setmidruleX}{s O{N} m}{%
+  \MakeluastringCommands[N]{#2}%
+  \luadirect{lutabt.mrX.set_midruleX(\plluastringA{#3}, \luastring{#1})}%
 }
-
-
-
-%% adapted from
-% https://tex.stackexchange.com/questions/182953/add-midrule-every-5-lines-automatically
-%% https://tex.stackexchange.com/questions/145084/what-is-the-function-of-noalign
-
-\def\midruleXstep{5}
-\def\midruleXrule{\gmidrule}
-
-\newcounter{midruleX}
-\newcommand*{\midruleX}{%
-  \aftergroup\aftergroup\aftergroup\midruleXaux
-}
-\newif\ifmidruleX
-
-\newcommand*{\midruleXaux}{%
-  \noalign{%
-    \stepcounter{midruleX}%
-    \ifnum\value{midruleX}=\midruleXstep %
-      \global\midruleXtrue
-      \resetmidruleX%
-    \else
-      \global\midruleXfalse
-    \fi
-  }
-  \ifmidruleX\midruleXrule\fi
-}
-\newcommand*{\resetmidruleX}{\setcounter{midruleX}{0}}  %%% todo maybe put noalign in here
-
-\resetmidruleX
-
+\NewDocumentCommand{\midruleXreset}{O{0}}{\luadirect{lutabt.mrX.cntr = tonumber(\luastring{#1})}}
+\NewCommandCopy\resetmidruleX\midruleXreset
 
 
 
@@ -162,34 +138,67 @@
 
 
 
+\NewDocumentCommand{\midrulesat}{m}{\luadirect{lutabt.add_auto_midrules(\luastring{#1})}}
+
+
+
+
+\NewDocumentCommand{\settabular}{s m}{\luadirect{lutabt.set_tabular(\luastring{#2})}} % make kv interface for auto
+
+\def\ltt@resetrownum{\luadirect{lutabt.reset_rows()}}
+\def\ltt@autotoprule{\luadirect{lutabt.process_auto_topbot_rule('top')}}
+\def\ltt@autobotrule{\luadirect{lutabt.process_auto_topbot_rule('bottom')}}
+
 \let\oldtabular\tabular
-\RenewExpandableDocumentCommand{\tabular}{ O{c} m }{%
+\let\oldendtabular\endtabular
+\RenewExpandableDocumentCommand{\tabular}{ O{l} m }{%
   \luadirect{lutabt.set_col_spec(\luastringN{#2})}%
-  \oldtabular[#1]{\ltt@ltrim#2\ltt@rtrim}%
+  \oldtabular[#1]{\lttltrim#2\lttrtrim}\ltt@inctablelevel\ltt@resetrownum\ltt@autotoprule%
 }
+\def\endtabular{\ltt@autobotrule\ltt@dectablelevel\oldendtabular}
+
+
+
 
 \expandafter\let\expandafter\oldtabulars\csname tabular*\endcsname
 \expandafter\let\expandafter\endoldtabulars\csname endtabular*\endcsname
-\RenewDocumentEnvironment{tabular*}{ m O{c} m }{%
+\RenewDocumentEnvironment{tabular*}{ m O{l} m }{%
   \luadirect{lutabt.set_col_spec(\luastringN{#3})}%
-  \begin{oldtabulars}{#1}[#2]{\ltt@ltrim#3\ltt@rtrim}%
+  \begin{oldtabulars}{#1}[#2]{\lttltrim#3\lttrtrim}\ltt@inctablelevel\ltt@resetrownum\ltt@autotoprule%
 }{%
-  \end{oldtabulars}%
+  \ltt@autobotrule\ltt@dectablelevel\end{oldtabulars}%
 }
 %%% NOTE tabularx uses tabular*, NO NEED TO CHANGE TABULARX!
 
+\let\oldlongtable\longtable
+\RenewExpandableDocumentCommand{\longtable}{ O{l} m }{%
+  \luadirect{lutabt.auto_topbot_old = lutabt.auto_topbot
+  lutabt.auto_topbot = false}%
+  \luadirect{lutabt.set_col_spec(\luastringN{#2})}%
+  \oldlongtable[#1]{\lttltrim#2\lttrtrim}\ltt@inctablelevel\ltt@resetrownum%
+}
+\let\oldendlongtable\endlongtable
+\def\endlongtable{\luadirect{lutabt.auto_topbot = lutabt.auto_topbot_old}
+  \ltt@dectablelevel\oldendlongtable}% restore status of auto topbot rule
+
+\apptocmd{\@arraycr}{\luadirect{lutabt.process_auto_rules()}}{}{}
+
+
+\def\ltt@inctablelevel{\luadirect{lutabt.tablelevel = lutabt.tablelevel + 1}}
+\def\ltt@dectablelevel{\luadirect{lutabt.tablelevel = lutabt.tablelevel - 1}}
 
 %s0,spec,mcspec,pre,content
 % Magic Cell
-\NewExpandableDocumentCommand{\MC}{ s O{} D(){} D<>{} m }{%
+\NewExpandableDocumentCommand{\MC}{ s O{} O{} D<>{} D(){x} m }{%
 % Magic cell *wraps with {} but automatically checks for SI column,
-                    % [column spec] (mult-column spec override)  <pre-cell stuff>  {cell content}
+                    % [column spec] [mult-column spec override]  <pre-cell stuff> (add rule)  {cell content}
 \luadirect{lutabt.MagicCell(
     \luastring{#1},
     \luastring{#2},
     \luastringN{#3},
     \luastringN{#4},
-    \luastringN{#5}
+    \luastringN{#6},
+    \luastring{#5}
 )}}
 
 
@@ -204,6 +213,10 @@
 }}
 \NewDocumentCommand{\addMCsicol}{ m }{\luadirect{
   lutabt.SI_cols[\string##lutabt.SI_cols+1] = '#1'
+}}
+
+\NewDocumentCommand{\forcecolspec}{ m }{\luadirect{
+  lutabt.col_spec = (\luastring{#1}):totable()
 }}
 
 
@@ -228,10 +241,52 @@
 %  \setcounter{RowNumCnt}{1}%
 %  \luadirect{lutabt.NumTabColsMX = 0}% fall back if calc doesnt work for some reason
 %\DeclareOption{notrimx}{
-%  \global\newcolumntype{\ltt@ltrim}{!{\stepcounter{RowNumCnt}}}
-%%  \global\newcolumntype{\ltt@rtrim}{!{\luadirect{lutabt.get_TabColNum()}}}
+%  \global\newcolumntype{\lttltrim}{!{\stepcounter{RowNumCnt}}}
+%%  \global\newcolumntype{\lttrtrim}{!{\luadirect{lutabt.get_TabColNum()}}}
 %}
 %\DeclareOption{trimx}{
-%  \newcolumntype{\ltt@ltrim}{@{\stepcounter{RowNumCnt}}}
-%%  \newcolumntype{\ltt@rtrim}{@{\luadirect{lutabt.get_TabColNum()}}}
+%  \newcolumntype{\lttltrim}{@{\stepcounter{RowNumCnt}}}
+%%  \newcolumntype{\lttrtrim}{@{\luadirect{lutabt.get_TabColNum()}}}
+%}
+
+
+%% adapted from
+% https://tex.stackexchange.com/questions/182953/add-midrule-every-5-lines-automatically
+%% https://tex.stackexchange.com/questions/145084/what-is-the-function-of-noalign
+%
+%\def\midruleXstep{5}
+%\def\midruleXrule{\gmidrule}
+%
+%\newcounter{midruleX}
+%\newcommand*{\midruleXa}{%
+%  \aftergroup\aftergroup\aftergroup\midruleXaux
+%}
+%
+%\newif\ifmidruleX
+%
+%\newcommand*{\midruleXaux}{%
+%  \noalign{%
+%    \stepcounter{midruleX}%
+%    \ifnum\value{midruleX}=\midruleXstep %
+%      \global\midruleXtrue
+%      \resetmidruleX%
+%    \else
+%      \global\midruleXfalse
+%    \fi
+%  }
+%  \ifmidruleX\midruleXrule\fi
+%}
+
+%\newcommand*{\resetmidruleX}{\setcounter{midruleX}{0}}  %
+%\resetmidruleX
+
+%\NewDocumentCommand{\resetmidruleXonNP}{O{0}}{\luadirect{lutabt.reset_midruleX_on_newpage(\luastring{#1})}}
+
+%
+%\NewDocumentCommand{\IfmidruleX}{m m}{%  if a midruleX was placed, do #1, if not, do #2
+%  \ifnum\the\value{midruleX}=0
+%      #1
+%    \else
+%      #2
+%  \fi%
 %}

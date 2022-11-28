@@ -24,10 +24,14 @@
 
 
 \documentclass[11pt,parskip=half]{scrartcl}
+
+
 \setlength{\parindent}{0ex}
+
 \newcommand{\llcmd}[1]{\leavevmode\llap{\texttt{\detokenize{#1}\ }}}
-\newcommand{\cmd}[1]{\texttt{\detokenize{#1}}}
-\newcommand{\qcmd}[1]{``\cmd{#1}''}
+\def\cmd{\bgroup\catcode`\\=12 \catcode`\ =12 \cmdA}
+\def\cmdA#1{\egroup{\texttt{\detokenize{#1}}}}
+
 \usepackage{url}
 \usepackage{showexpl}
 \lstset{explpreset={justification=\raggedright,pos=r,wide=true}}
@@ -57,17 +61,26 @@
 
 \newcommand{\tMC}{\cmd{\\MC}}
 
-\usepackage[pl,extrasnoglobals]{penlight}
+
+\usepackage{caption}
+
+\usepackage{ltxtable}
+\usepackage{longtable}
+
+\usepackage[pl,extras]{penlight}
 
 
 \RequirePackage{lutabulartools}
 \title{lutabulartools}
-\subtitle{some useful tabular tools (LuaLaTeX-based)}
+\subtitle{some useful LuaLaTeX-based tabular tools}
 
 \usepackage{tabularx}
 \usepackage{siunitx}
 
 \lttdebugON
+
+\usepackage{hyperref}
+
 
 \begin{document}
 
@@ -76,10 +89,9 @@
 
 \maketitle
 
-lutabulartools is a package that contains a few useful macros to help with tables.
-Most functions require LuaLaTeX.
+lutabulartools is a package that contains a few useful Lua\LaTeX-based macros to help with tables.
 This package redefines the {\ttfamily tabular} and {\ttfamily tabular*} environments.
-The following packages are loaded:
+The following packages are loaded if not already, so if you have specific settings for these packages, load this package after:
 \texttt{
 {booktabs},
 {multirow},
@@ -89,22 +101,21 @@ The following packages are loaded:
 {xcolor},
 {colortbl},
 {luacode},
-{penlight},
-}
+{penlight}
+}.
 
-\section{Options}
-The author likes tables with left and right-most columns flush to the end.
-Since the \cmd{tabular} env is redefined in this, the author took the liberty to
-automatically pad the \cmd{tabular} cell spec with \cmd{@{}} on each end.
-If you don't want this, you can pass \cmd{notrim} to the package. Or,
-you can manually fix it in a \cmd{tabular} with \cmd{!{}} like so:
+\section{settabular}
 
+A key-val interface in the \cmd{\settabular{}} command is used to set some tabular settings.
+\cmd{nopad} automatically adds \cmd{@{}} on each end of the column spec.\\
+\cmd{tbrule} automatically adds \cmd{\toprule} as the first thing in the environment, and \cmd{\bottomrule} as the last.
+Note that automatic rule adding is disabled in \cmd{longtable}.
 \begin{LTXexample}
-\begin{tabular}{!{}c!{}}\toprule
-Xyz\\\bottomrule    \end{tabular}
+\settabular{nopad,tbrule} % or
+\settabular{nopad=false,tbrule=false}
 \end{LTXexample}
 
-\subsection{Debugging}
+\section{Debugging}
 You can toggle log output debugging with \cmd{\lttdebugON} and \cmd{\lttdebugOFF}.
 The messages will be printed in a format like so:
 \begin{verbatim}
@@ -120,49 +131,53 @@ With the help of LuaLaTeX, it takes an easy-to-use cell specification and employ
 \cmd{\MC} will not work properly if your table is only 1 column wide (you probably don't need \cmd{MC} in that case anyway...).
 Here is the usage:
 
-\texttt{\textbackslash MC * [cell spec] <cell format> (override multicolumn col) \{contents\} }
+\texttt{\textbackslash MC * [cell spec] [override multicol] <cell format> (add cmidrule)  \{contents\} }
 
 \llcmd{*}This will wrap the entire command in \{\}. This is necessary for \texttt{siunitx} single-column width columns.
 However, the \cmd{\MC} command attempts to detect this automatically.
 
 \llcmd{[cell spec]}%
 Any letters placed in this argument are used for cell alignment.
-You can use one of three: \qcmd{t}, \qcmd{m}, \qcmd{b} for top, middle, bottom (vertical alignment),
-or \qcmd{l}, \qcmd{c}, \qcmd{r} for horizontal alignment.
+You can use one of three: \cmd{t}, \cmd{m}, \cmd{b} for top, middle, bottom (vertical alignment),
+and/or \cmd{l}, \cmd{c}, \cmd{r} for horizontal alignment, in no particular order.
 By default, \cmd{\MC}   will try to autodetect the horizontal alignment based on the current column.
 If it can't, it will be left-aligned.
 The default vertical alginment is top. More on this in section \ref{s.def}.
 
 This argument can also contain two integers, separated by a comma (if two are used).
-\qcmd{C,R}, \qcmd{C}, or \qcmd{,R} are a valid inputs,
+\cmd{C,R}, \cmd{C}, or \cmd{,R} are a valid inputs,
 where \cmd{R}=rows (int), and \cmd{C}=columns, (int).
 If you want a 1 column wide, multirow cell,
-you can pass \qcmd{,R}. These numbers can be negative (positive numbers occupy columns to the right
+you can pass \cmd{,R}. These numbers can be negative (positive numbers occupy columns to the right
 and rows below, and negative numbers occupy columns to the left and rows above).
 If no spec is passed, (argument empty), \cmd{\MC}
 acts like a \texttt{makecell}.
-Additionally, you can pass \qcmd{+} in place of C (number of columns wide),
+Additionally, you can pass \cmd{+} in place of C (number of columns wide),
 and it will make the cell width fill until the end of the current row.
 
 Examples:\\
-\qcmd{\MC[2,2]} means two columns wide, two rows tall.\\
-\qcmd{\MC[2,1]} or \qcmd{\MC[2]}  means two columns wide, one row tall.\\
-\qcmd{\MC[1,2]} or \qcmd{\MC[,2]} means one column wide, two rows tall.\\
-\qcmd{\MC[+,2]}, if placed in the first column, occupies the entire row and is two rows tall.\\
-\qcmd{\MC[+,2]}, if placed in the second column, occupies the second column to the end of the table and is two rows tall.\\
+\cmd{\MC[2,2]} means two columns wide, two rows tall.\\
+\cmd{\MC[2,1]} or \cmd{\MC[2]}  means two columns wide, one row tall.\\
+\cmd{\MC[1,2]} or \cmd{\MC[,2]} means one column wide, two rows tall.\\
+\cmd{\MC[+,2]}, if placed in the first column, occupies the entire row and is two rows tall.\\
+\cmd{\MC[+,2]}, if placed in the second column, occupies the second column to the end of the table and is two rows tall.\\
 In any of these examples, you can place the alignment letters anywhere.
-So, \qcmd{\MC[l1,2b]} and \qcmd{\MC[1,2 lb]} are both left-bottom aligned (spaces are ignored).
+So, \cmd{\MC[l1,2b]} and \cmd{\MC[1,2 lb]} are both left-bottom aligned (spaces are ignored).
 
 
-\llcmd{(override}%
+\llcmd{[override mc]}%
 You may want to adjust the column specification of a multicolumn  cell,\\
-\llcmd{multicolumn)}for example, using
-\texttt{(@\{\}c@\{\})} to remove padding between the cell.
+\texttt{[@\{\}c@\{\}]} for example to remove padding between the cell.
 
+\llcmd{(cmidrule)} will add a cmidrule at end of row. \cmd{()} to add without trim or \cmd{(lr)} to trim.
 
 \llcmd{<cell format>}%
 You can place formatting like \cmd{\bfseries} here.
 
+
+\subsection{midrulesat}
+If you'd rather specify the location of midrules outside the table, use \cmd{\midrulesat{1,2,3}}: a midrule will be
+placed on rows 1, 2, and 3, for the next table only.
 
 \subsection{Defaults}\label{s.def}
 The \cmd{tabular[*]} environment is re-defined to use Lua pattern matching
@@ -177,31 +192,56 @@ To add a column that should be surrounded by brackets for \cmd{siunitx} purposes
 S is included by default.
 
 
-\newpage
 
 \subsection{Examples}
 
 \let\nl\\
 
 
-\subsubsection{A good use for headers}
+Change the settings for the rest of the doc.
+
+
 \begin{LTXexample}
-\begin{tabular}{ l l l }\toprule
+\settabular{nopad,tbrule}
+\end{LTXexample}
+
+\settabular{nopad,tbrule}
+
+
+\subsubsection{A good use for headers}
+
+\begin{LTXexample}
+\begin{tabular}{ l l l }
 \MC[+m]<\itshape>{A Decent
                 Example}\\\midrule
-    & \MC[2m]{Heading} \\\cmidrule{2-}
-\MC[b,-2]{Multi\\Line}  & A & B   \\\midrule
+    & \MC[2m](r){Heading} \\
+\MC[b,-2]{Multi\\Line}  & A & B \\\midrule
+   end & & \\
 \end{tabular}
 \end{LTXexample}
 
-\subsubsection{A small example}
 
+
+\subsubsection{A small example}
+\begin{LTXexample}
+\midrulesat{1,2,3}
+\begin{tabular}{ l l l }
+a \\
+b \\
+c \\
+d \\
+\end{tabular}
+\end{LTXexample}
+
+
+\subsubsection{A small example}
 
 \begin{LTXexample}
 \begin{tabular}{ l l l }\midrule
- A & \MC[mc2,2]{Lttrs}    \\
- B &                       \\
- 1 & A & B   \\
+ \MC(){A} & \MC[mc2,2]{Lttrs}    \\
+ \MC(r){B} &        \\ \cmidrule{2-3}
+ \MC(r){1} & \MC(r){A} & \MC(r){B}   \\ % todo must fix
+  \\
 \end{tabular}
 \end{LTXexample}
 
@@ -210,7 +250,7 @@ S is included by default.
 Notice that the top-aligned p-column
 doesn't play particularly well with the middle aligned \cmd{\MC}
 \begin{LTXexample}
-\begin{tabular}{ p{1cm} l }\toprule
+\begin{tabular}{ p{1cm} l }
    hello\newline world
         & \MC[mr]{11\\2} \\
 \end{tabular}
@@ -221,9 +261,9 @@ doesn't play particularly well with the middle aligned \cmd{\MC}
 \begin{LTXexample}
 \begin{tabular}{|c|c|c|} \hline
 1 & 2 & 3\\\hline
-4 & \MC[2,2cm](@{}c@{}|)%
+4 & \MC[2,2cm][@{}c@{}|]%
     <\ttfamily>{5}\\\cline{1-1}
-  & \MC[2](r|){} \\\hline%hacky fix
+  & \MC[2][r|]{} \\\hline%hacky fix
 6 & 7 & 8\\\hline
 \end{tabular}
 \end{LTXexample}
@@ -247,7 +287,7 @@ doesn't play particularly well with the middle aligned \cmd{\MC}
 \begin{tabular}{| c | c | c | c | c | c |}\toprule
  \MC[2,2cm]<\ttfamily>{2,2cm}   & \MC[2r]<\ttfamily>{2r} & 5 & \MC[,2b]<\ttfamily>{,2b}\\
    &   & 3 & 4 & 5 & \\\midrule
- 1 & 2 & \MC[2l](@{}l)<\ttfamily>{2l (\@\{\}l)} & 5 & 6666\\\cmidrule{3-4}
+ 1 & 2 & \MC[2l][@{}l]<\ttfamily>{2l (\@\{\}l)} & 5 & 6666\\\cmidrule{3-4}
  1 & \MC[+r]<\ttfamily>{+r}  \\
   \\
  1 & 2 & 3 & 4 & 5 & \MC[,-2]<\ttfamily>{,\\-2}\\
@@ -298,9 +338,9 @@ or reference with respect to the last column (blank, \texttt{+1}, \texttt{+0}, o
 or omit the last number.\\
 \llcmd{\cmidrule}is a single partial rule, with the above features\\
 \llcmd{\gcmidrule}is a single partial gray rule, with the above features\\
-You can add multiple \qcmd{cmidrule}'s with the \texttt{(g)cmidrules} command. Separate with a comma.
-You can apply global trimming of the rules with the \qcmd{()} optional argument, and then
-override it for a specific rule by placing \qcmd{r} or \qcmd{l} with the span specification.\\
+You can add multiple \cmd{cmidrule}'s with the \texttt{(g)cmidrules} command. Separate with a comma.
+You can apply global trimming of the rules with the \cmd{()} optional argument, and then
+override it for a specific rule by placing \cmd{r} or \cmd{l} with the span specification.\\
 \llcmd{\gcmidrules}Can produce multiple, light gray partial rules\\
 \llcmd{\cmidrules}Can produce multiple black partial rules.\\
 Here's an example:
@@ -332,27 +372,36 @@ Here's an example:
 \llcmd{\midruleX}%
 With this command, you can place a rule
 every X rows.
-You can change the step size and what kind of midrule you prefer.
-\begin{verbatim}
-\def\midruleXstep{5}
-\def\midruleXrule{\gmidrule}
-\end{verbatim}
-
-
-To use, insert \cmd{@{\midrulex}} at the end of each row using the tabular column spec.
+To use, place \cmd{@{\midruleX}} at the end of the tabular column spec, eg. \cmd{\begin{tabular}{ll@{\midruleX}}..}.
+You can configure the step size and what kind of midrule you prefer with the following key-val syntax, with default values below:\\
+\cmd{\setmidruleX{step=5,rule=midrule,reset=false,resetnum=0,cntr=0}}\\
+\cmd{step} is the number of rows (X) before applying the rule set by \cmd{rule}. \\
+Concering \cmd{longtable}s: If \cmd{reset} is set to \cmd{true},
+\cmd{\midruleX} will also add a unique \cmd{\label{}} on each row, and if the row starts on a newpage,
+resets the row counter to \cmd{resetnum}, to ensure you have the same X number of rows after the header of each page of a \cmd{longtable}.\\
+The starred version of first reverts the settings to default, then loads your inputted settings, which the non-starred
+version only overwrites the settings specified. \cmd{\setmidruleX*{}} will restore to default.
+Use optional parameter  \cmd{\setmidruleX*[o|n|f]{}}
+to control expansion of the key-val settings (\cmd{[n]} for not expanded is default).
 Before you want counting to begin, you should
 apply \cmd{\resetmidruleX}  to avoid header rows being counted.
-Use \cmd{\noalign{\resetmiduleX}} if you need place a rule on the same line or in a cell.
+Use \cmd{\noalign{\resetmiduleX}} if you need place a rule on the same line the reset takes place, or in a cell before \cmd{\\}.
+Note that \cmd{\resetmidruleX} resets the row counter to 0, and is in effect, a short-cut for \cmd{\setmidruleX{}} or \cmd{\setmidruleX{cntr=0}}
 
 
+%
+%\begin{tabular}{l@{\luadirect{tex.print('\\midrule')}}}
+%  Hello \\
+%\end{tabular}
+
+%
 \begin{LTXexample}
-\def\midruleXstep{3}
-\def\midruleXrule{\cmidrules{1,3-4r}}
+\setmidruleX{step=3,rule=gmidrule}
 \begin{tabular}{rclc@{\midruleX}}
-                % ^^^ inject midrule
-\toprule
+                % ^^^ inject midruleX
 Num  & . & . & .  \\
-\midrule\resetmidruleX  % reset
+\midrule\resetmidruleX
+% reset so header dont count
 1    & & &  \\
 2    & & &  \\
 3    & & &  \\
@@ -364,10 +413,85 @@ Num  & . & . & .  \\
 9    & & &  \\
 10   & & &  \\
 11   & & &  \\
-\resetmidruleX % no bottom rule
+\resetmidruleX % resest
+   % so no bottom gray rule
 12   & & &  \\
-\bottomrule
 \end{tabular}
 \end{LTXexample}
+
+%}
+
+%
+
+\pagebreak
+
+Here's an example with long table. Notice the gray rules reliably appear 3 rows after each header.
+\begin{verbatim}
+\setmidruleX{reset=true,resetnum=0,rule="\gcmidrules{1r,2-}"}
+\def\tblhead{\toprule No & Name & Place & other\\\midrule}
+\def\tblcontinued{\MC[+l]{Continued...}\\}
+\def\tblcontinues\MC[+r]{...Continues}\\}
+\begin{longtable}{rclc@{\midruleX}}
+  \tblhead\endfirsthead
+  \tblcontinued\head\endhead % all the lines above this will be repeated on every page
+  \tblcontinues\endfoot
+  \bottomrule End.\endlastfoot
+  \resetmidruleX
+1       &           &       &  \\
+2       &           &       &    \\
+3       &           &       &    \\
+4       &           &       &    \\
+5       &           &       &    \\
+6       &           &       &    \\
+7       &           &       &    \\
+8       &           &       &    \\
+9       &           &       &    \\
+10      &           &       &    \\
+11      &           &       &    \\
+12      &           &       &    \\
+13      &           &       &    \\
+14      &           &       &    \\
+15      &           &       &    \\\newpage
+16      &           &       &    \\
+17      &           &       &    \\
+18      &           &       &    \\\resetmidruleX
+19      &           &       &    \\
+\end{longtable}
+\end{verbatim}
+
+\setmidruleX{reset=true,resetnum=0,rule="\gcmidrules{1r,2-}"}
+\def\tblhead{\toprule No & Name & Place & other\\\midrule}
+\def\tblcontinued{\MC[+l]{Continued...}\\}
+\def\tblcontinues{\MC[+r]{...Continues}\\}
+\begin{longtable}{rclc@{\midruleX}}
+  \tblhead\endfirsthead
+  \tblcontinued\tblhead\endhead % all the lines above this will be repeated on every page
+  \tblcontinues\endfoot
+  \bottomrule End.\endlastfoot
+  \resetmidruleX
+1       &           &       &  \\
+2       &           &       &    \\
+3       &           &       &    \\
+4       &           &       &    \\
+5       &           &       &    \\
+6       &           &       &    \\
+7       &           &       &    \\
+8       &           &       &    \\
+9       &           &       &    \\
+10      &           &       &    \\
+11      &           &       &    \\
+12      &           &       &    \\
+13      &           &       &    \\
+14      &           &       &    \\
+15      &           &       &    \\\newpage
+16      &           &       &    \\
+17      &           &       &    \\
+18      &           &       &    \\\resetmidruleX
+19      &           &       &    \\
+\end{longtable}
+
+
+\LTXtable{\linewidth}{ltxexample}
+
 
 \end{document}

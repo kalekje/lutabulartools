@@ -25,13 +25,64 @@
 
 local pl = _G['penlight'] or _G['pl'] -- penlight for this namespace is pl
 if (__PL_EXTRAS__ == nil) or  (__PENLIGHT__ == nil) then
-    tex.sprint('\\PackageError{yamlvars}{penlight package with extras (or extrasnoglobals) option must be loaded before this package}{}')
+    tex.sprint('\\PackageError{yamlvars}{penlight package with extras (or extrasglobals) option must be loaded before this package}{}')
+    tex.print('\\stop')
 end
+local T = pl.tablex
 
 local ltt = {}
 
+ltt.tablelevel = 0
 
 ltt.debug = false
+
+ltt.auto_topbot = false
+
+ltt.auto_crules = {} -- {{span,trim}, } appearance is like this, 'range|trim', -- auto_rules created by MC
+ltt.auto_midrules = {}
+
+ltt.col_spec1 = {} -- column spec if one column wide (since makcell nests a tabular, preserve col_spec below)
+ltt.col_spec = {} -- tab column spec if above 1
+ltt.col = '' -- current column spec, single char, only applies to tabular with more than 1 column
+ltt.col_num = 1 -- current column number
+ltt.row_num = 0 -- current row number
+
+
+ltt.col_ver_repl = {
+m = 'm',
+M = 'm',
+b = 'b',
+}
+
+ltt.col_hor_repl = { -- horizontal cell alignment that multicolumn should use if () or [hori] not passed to func
+    l = 'l',
+    c = 'c',
+    r = 'r',
+    p = 'l',
+    P = 'c',
+    X = 'l',
+    Y = 'c',
+    Z = 'l',
+    N = 'c',
+    L = 'l',
+    R = 'r',
+    C = 'c',
+}
+
+-- allow user to place their own replacements in for a table, say if they define a column that expands to multiple
+ltt.col_replaces = {
+--x = 'lll'
+}
+
+ltt.SI_cols = {'S', 'N', 'Q', 'L', 'R'}
+
+
+
+-----
+-----       utility funcs
+-----
+
+
 function ltt.debugtalk(s, ss)
     ss = ss or ''
     if ltt.debug then
@@ -39,30 +90,45 @@ function ltt.debugtalk(s, ss)
     end
 end
 
-ltt.col_spec1 = {} -- column spec if one column wide (since makcell nests a tabular, preserve col_spec below)
-ltt.col_spec = {} -- tab column spec if above 1
-ltt.col = '' -- current column spec, single char, only applies to tabular with more than 1 column
-ltt.col_num = 1 -- current column number
+
+function ltt.set_tabular(sett)
+    sett = luakeys.parse(sett)
+    local trim = ''
+    for k, v in pairs(sett) do
+        if k == 'tbrule' then
+            ltt.auto_topbot = v
+        elseif k == 'nopad' then
+            if pl.hasval(v) then trim = '@{}' end -- set to trim
+            tex.print('\\newcolumntype{\\lttltrim}{'..trim..'}')
+            tex.print('\\newcolumntype{\\lttrtrim}{'..trim..'}')
+        end
+    end
+end
 
 
-local glue_t, unset_t, tabskip_st = node.id'glue', node.id'unset'
-local tabskip_st = table.swapped(node.subtypes'glue').tabskip
-assert(tabskip_st)
+-----
+-----       tabular utility funcs
+-----
 
+function ltt.reset_rows()
+    if ltt.tablelevel == 1 then
+        ltt.row_num = 0
+    end
+end
 
 function ltt.set_col_num()
     -- register current column info (column number and specification)
     local nest
     for i = tex.nest.ptr, 1, -1 do
       local tail = tex.nest[i].tail
-      if tail.id == glue_t and tail.subtype == tabskip_st then
+      if tail.id == node.id'glue' and tail.subtype == table.swapped(node.subtypes'glue').tabskip then
         nest = tex.nest[i]
         break
       end
     end
     if nest then
       local col = 1
-      for _, sub in node.traverse_id(unset_t, nest.head) do
+      for _, sub in node.traverse_id(node.id'unset', nest.head) do
         col = col + sub + 1
       end
       ltt.col_num = col
@@ -100,7 +166,12 @@ end
 -- this case should be considered in this code.
 -- for example: \multirow{2}{=}
 
-function ltt.MagicCell(s0,spec,mcspec,pre,content)
+
+-----
+-----       magic cell and helpers
+-----
+
+function ltt.MagicCell(s0,spec,mcspec,pre,content,trim)
     --
     ltt.set_col_num() -- register current column number and column spec
 
@@ -116,7 +187,7 @@ function ltt.MagicCell(s0,spec,mcspec,pre,content)
     ltt.debugtalk(pl.List{v, h, r, c, mcspec}:join'; ','v, h, r, c, mcspec')
 
     --help_wrt(_CurTabColAbv,'current column')
-    if s0 == _xTrue or (pl.List(ltt.SI_cols):contains(ltt.col) -- special columns for SI
+    if s0 == pl.tex._xTrue or (pl.List(ltt.SI_cols):contains(ltt.col) -- special columns for SI
             and c == '') then -- multicolumn cannot have {} around it
         STR = STR .. '{'                                       -- multirow and makcell must have {} around it S column is used
         pl.tex.add_bkt_cnt()
@@ -148,7 +219,12 @@ function ltt.MagicCell(s0,spec,mcspec,pre,content)
     --help_wrt(STR..' <<< magic cell string')
     ltt.debugtalk(STR,'MagicCell')
     tex.sprint(STR)--tex print the STR
+
+    local en
+    if c == '' then en = ltt.col_num else en = ltt.col_num + c -1 end
+    ltt.add_auto_crule(ltt.col_num, en, trim)
 end
+
 
 
 function ltt.parse_MagicCell_spec(spec)
@@ -203,44 +279,75 @@ function ltt.get_HColSpec(h, mcspec, c) -- take horizontal alignment
 end
 
 
+-----
+-----       autorules (with \MC() or auto top bot
+-----
 
-ltt.col_ver_repl = {
-m = 'm',
-M = 'm',
-b = 'b',
-}
+function ltt.add_auto_midrules(rows)
+    ltt.auto_midrules = rows:split(',')
+end
 
-ltt.col_hor_repl = { -- horizontal cell alignment that multicolumn should use if () or [hori] not passed to func
-    l = 'l',
-    c = 'c',
-    r = 'r',
-    p = 'l',
-    P = 'c',
-    X = 'l',
-    Y = 'c',
-    Z = 'l',
-    N = 'c',
-    L = 'l',
-    R = 'r',
-    C = 'c',
-}
+function ltt.add_auto_crule(st,en,trim)
+    if trim ~= 'x' then
+        ltt.auto_crules[#ltt.auto_crules + 1] = {math.floor(st)..'-'..math.floor(en), trim} -- append here
+        -- {{span 1-2, trim}, ..}
+    end
+end
 
--- allow user to place their own replacements in for a table, say if they define a column that expands to multiple
-ltt.col_replaces = {
---x = 'lll'
-}
 
-ltt.SI_cols = {'S', 'N', 'Q', 'L', 'R'}
---ltt.SI_cols = {'S'}
---ltt.SI_cols = {'N'}
+function ltt.process_auto_rules()
+    if ltt.tablelevel == 1 then
+        ltt.row_num = ltt.row_num + 1
+    end
+    if ltt.auto_crules ~= {} then
+        if ltt.tablelevel == 1 then
+            for _, v in ipairs(ltt.auto_crules) do
+                --pl.help_wrt(ltt.auto_crules, 'fuck')
+                ltt.make1cmidrule('', v[2], v[1], 'cmidrule')
+            end
+            for i, v in ipairs(ltt.auto_midrules) do
+                --pl.help_wrt(ltt.auto_midrules, 'fuck')
+                --pl.help_wrt(v, 'fuck')
+                pl.help_wrt(ltt.row_num, 'fuck')
+                if tonumber(v) == ltt.row_num then
+                    _ = table.remove(ltt.auto_midrules,i)
+                    --pl.help_wrt(v, 'removed!')
+                    tex.print('\\midrule ')
+                end
+            end
+        end
+    end
+    ltt.auto_crules = {}
+end
+
+
+
+
+function ltt.process_auto_topbot_rule(rule)
+    if ltt.tablelevel == 1 then
+        if ltt.auto_topbot then
+            tex.print('\\'..rule..'rule ')
+        end
+    end
+end
+
 
 
 
 
 
 -----
---- midrule stuff
+-----       midrule and midruleX stuff
 -----
+
+
+ltt.mrX = {}
+ltt.mrX.defaults = {step=5, rule='midrule', reset=false, resetnum=0, cntr=0}
+ltt.mrX.settings = T.copy(ltt.mrX.defaults)
+ltt.mrX.cntr = 0
+ltt.mrX.pgcntr = 0
+
+
 
 function ltt.get_midrule_col(s)
     if string.find(s, '+')  then
@@ -271,8 +378,6 @@ function ltt.make1cmidrule(s, r, c, cmd) -- s=square r=round c=curly
     end
     c = ltt.get_midrule_col(t[1])..'-'..ltt.get_midrule_col(t[2])
     cmd = cmd..'{'..c..'}'
-    --help_wrt(cmd)
-
     ltt.debugtalk(cmd,'make1cmidrule')
     tex.print(cmd)
 end
@@ -286,6 +391,68 @@ function ltt.makecmidrules(s, r, c, cmd)
         ltt.make1cmidrule(s, r1:strip(), c2:strip(), cmd)
     end
 end
+
+
+
+function ltt.mrX.set_midruleX(new_sett, def)
+    def = def or ''
+    local curr_sett = {}
+    if def == pl.tex._xTrue then  -- default flag, if true, reset all non-used keys to default
+        curr_sett = ltt.mrX.defaults
+    else
+        curr_sett = ltt.mrX.settings
+    end
+    new_sett = luakeys.parse(new_sett)
+    ltt.mrX.settings = T.union(curr_sett, new_sett)
+    ltt.debugtalk(ltt.mrX.settings, 'new midruleX settings')
+    ltt.mrX.cntr = curr_sett.cntr
+end
+
+function ltt.mrX.midruleX(n)
+    n = n or '' -- todo placeholder for noalign ?
+    local s = ltt.mrX.settings
+    local rule = s.rule
+    if pl.hasval(s.reset) and ltt.mrX.add_label_and_check_page_change() then ltt.mrX.cntr = s.resetnum end
+    ltt.mrX.cntr = ltt.mrX.cntr + 1
+    if ltt.mrX.cntr == s.step then
+        if not rule:startswith('\\') then  rule = '\\'..rule end -- todo consider allowing \gmidrule syntax, possible issue with expansion
+        ltt.debugtalk(rule, 'apply midruleX')
+        tex.sprint(rule)
+        ltt.mrX.cntr = 0
+    end
+end
+
+function ltt.mrX.add_label_and_check_page_change()
+    ltt.mrX.pgcntr = ltt.mrX.pgcntr + 1
+    tex.print('\\noalign{\\label{ltt@tabular@row@'..ltt.mrX.pgcntr..'}}')
+    local rcurr = pl.tex.get_ref_info('ltt@tabular@row@'..ltt.mrX.pgcntr)
+    local rprev = pl.tex.get_ref_info('ltt@tabular@row@'..ltt.mrX.pgcntr-1)
+    --local rcurrc, _, _ = pl.tex.get_ref_info_all_cref('ltt@tabular@row@'..ltt.mrX.pgcntr)
+    ltt.debugtalk('curr: '..rcurr[2]..'   prev: '..rprev[2]..'   row: '..ltt.mrX.pgcntr, 'check midruleX page change')
+    ltt.debugtalk(rcurr, 'miduleX current reference info for row: '..ltt.mrX.pgcntr)
+    --ltt.debugtalk(rcurrc, 'miduleX current cleveref cref info')
+    if  rcurr[2] ~= rprev[2] then  -- pg no is second element
+        return true
+    end
+    return false
+end
+
+
+
+
+
+
+--
+--ltt.tabular_row_pages_cntr = 0
+--function ltt.reset_midruleX_on_newpage(n)
+--    local n = n or 0
+--    ltt.tabular_row_pages_cntr = ltt.tabular_row_pages_cntr + 1
+--    tex.print('\\noalign{\\label{tabular@row@'..ltt.tabular_row_pages_cntr..'}}')
+--    if ltt.get_ref_page('tabular@row@'..ltt.tabular_row_pages_cntr) -
+--            ltt.get_ref_page('tabular@row@'..(ltt.tabular_row_pages_cntr-1)) == 1 then
+--      tex.print('\\setcounter{midruleX}{'..n..'}')
+--    end
+--end
 
 
 --help_wrt('TEST COL ')
