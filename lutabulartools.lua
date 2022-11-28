@@ -37,6 +37,7 @@ ltt.tablelevel = 0
 ltt.debug = false
 
 ltt.auto_topbot = false
+ltt.auto_topbot_old = false
 
 ltt.auto_crules = {} -- {{span,trim}, } appearance is like this, 'range|trim', -- auto_rules created by MC
 ltt.auto_midrules = {}
@@ -280,7 +281,7 @@ end
 
 
 -----
------       autorules (with \MC() or auto top bot
+-----       autorules (with \MC() or auto top bot or midrule X, performed after \\
 -----
 
 function ltt.add_auto_midrules(rows)
@@ -298,23 +299,22 @@ end
 function ltt.process_auto_rules()
     if ltt.tablelevel == 1 then
         ltt.row_num = ltt.row_num + 1
-    end
-    if ltt.auto_crules ~= {} then
-        if ltt.tablelevel == 1 then
+        if ltt.auto_crules ~= {} then
             for _, v in ipairs(ltt.auto_crules) do
-                --pl.help_wrt(ltt.auto_crules, 'fuck')
                 ltt.make1cmidrule('', v[2], v[1], 'cmidrule')
             end
             for i, v in ipairs(ltt.auto_midrules) do
-                --pl.help_wrt(ltt.auto_midrules, 'fuck')
-                --pl.help_wrt(v, 'fuck')
-                pl.help_wrt(ltt.row_num, 'fuck')
                 if tonumber(v) == ltt.row_num then
                     _ = table.remove(ltt.auto_midrules,i)
-                    --pl.help_wrt(v, 'removed!')
                     tex.print('\\midrule ')
                 end
             end
+        end
+
+    end
+    if ltt.tablelevel == ltt.mrX.settings.lvl then -- ltx lvl is 3, this is a hack to work around it
+        if ltt.mrX.settings.on then
+            ltt.mrX.midruleX()
         end
     end
     ltt.auto_crules = {}
@@ -337,15 +337,8 @@ end
 
 
 -----
------       midrule and midruleX stuff
+-----       extra midrule
 -----
-
-
-ltt.mrX = {}
-ltt.mrX.defaults = {step=5, rule='midrule', reset=false, resetnum=0, cntr=0}
-ltt.mrX.settings = T.copy(ltt.mrX.defaults)
-ltt.mrX.cntr = 0
-ltt.mrX.pgcntr = 0
 
 
 
@@ -393,49 +386,76 @@ function ltt.makecmidrules(s, r, c, cmd)
 end
 
 
+-----
+-----         midruleX
+-----
+
+ltt.mrX = {}
+ltt.mrX.resets = {long=false, longhead=0, cntr=0, head=nil, on=true, lvl=1, ltx=false} -- settings that reset when \setmidruleX used
+ltt.mrX.settings = T.update(T.copy(ltt.mrX.resets), {pgcntr=0, step=5, rule='midrule'}) -- current settings
+
+
+function ltt.mrX.reset_midruleX(n)
+    ltt.mrX.settings.cntr = tonumber(n)
+end
+
+function ltt.mrX.off()
+    if ltt.tablelevel == ltt.mrX.settings.lvl then
+        ltt.mrX.settings.on = false
+    end
+end
 
 function ltt.mrX.set_midruleX(new_sett, def)
-    def = def or ''
-    local curr_sett = {}
-    if def == pl.tex._xTrue then  -- default flag, if true, reset all non-used keys to default
-        curr_sett = ltt.mrX.defaults
-    else
-        curr_sett = ltt.mrX.settings
-    end
-    new_sett = luakeys.parse(new_sett)
-    ltt.mrX.settings = T.union(curr_sett, new_sett)
+    ltt.mrX.settings = T.update(ltt.mrX.settings, T.union(ltt.mrX.resets, luakeys.parse(new_sett)))
     ltt.debugtalk(ltt.mrX.settings, 'new midruleX settings')
-    ltt.mrX.cntr = curr_sett.cntr
+    if ltt.mrX.settings.head ~= nil then
+        ltt.mrX.settings.cntr = -1*tonumber(ltt.mrX.settings.head)
+    end
+    if ltt.mrX.settings.ltx then -- longtable X messes with the tablelevel settings, hack to fix, use ltx keyword
+        ltt.mrX.settings.lvl = 3
+    end
 end
+
 
 function ltt.mrX.midruleX(n)
     n = n or '' -- todo placeholder for noalign ?
+    ltt.debugtalk(ltt.mrX.settings, 'midruleX here')
     local s = ltt.mrX.settings
     local rule = s.rule
-    if pl.hasval(s.reset) and ltt.mrX.add_label_and_check_page_change() then ltt.mrX.cntr = s.resetnum end
-    ltt.mrX.cntr = ltt.mrX.cntr + 1
-    if ltt.mrX.cntr == s.step then
+    if pl.hasval(s.long) and ltt.mrX.add_label_and_check_page_change() then ltt.mrX.settings.cntr = -1*s.longhead end -- reset to number on page change
+    ltt.mrX.settings.cntr = ltt.mrX.settings.cntr + 1
+    if ltt.mrX.settings.cntr == s.step then
         if not rule:startswith('\\') then  rule = '\\'..rule end -- todo consider allowing \gmidrule syntax, possible issue with expansion
         ltt.debugtalk(rule, 'apply midruleX')
         tex.sprint(rule)
-        ltt.mrX.cntr = 0
+        ltt.mrX.settings.cntr = 0
     end
 end
 
 function ltt.mrX.add_label_and_check_page_change()
-    ltt.mrX.pgcntr = ltt.mrX.pgcntr + 1
-    tex.print('\\noalign{\\label{ltt@tabular@row@'..ltt.mrX.pgcntr..'}}')
-    local rcurr = pl.tex.get_ref_info('ltt@tabular@row@'..ltt.mrX.pgcntr)
-    local rprev = pl.tex.get_ref_info('ltt@tabular@row@'..ltt.mrX.pgcntr-1)
-    --local rcurrc, _, _ = pl.tex.get_ref_info_all_cref('ltt@tabular@row@'..ltt.mrX.pgcntr)
-    ltt.debugtalk('curr: '..rcurr[2]..'   prev: '..rprev[2]..'   row: '..ltt.mrX.pgcntr, 'check midruleX page change')
-    ltt.debugtalk(rcurr, 'miduleX current reference info for row: '..ltt.mrX.pgcntr)
+    ltt.mrX.settings.pgcntr = ltt.mrX.settings.pgcntr + 1
+    tex.print('\\noalign{\\label{ltt@tabular@row@'..ltt.mrX.settings.pgcntr..'}}')
+    local rcurr = pl.tex.get_ref_info('ltt@tabular@row@'..ltt.mrX.settings.pgcntr)
+    local rprev = pl.tex.get_ref_info('ltt@tabular@row@'..ltt.mrX.settings.pgcntr-1)
+    --local rcurrc, _, _ = pl.tex.get_ref_info_all_cref('ltt@tabular@row@'..ltt.mrX.settings.pgcntr)
+    ltt.debugtalk('curr: '..rcurr[2]..'   prev: '..rprev[2]..'   row: '..ltt.mrX.settings.pgcntr, 'check midruleX page change')
+    ltt.debugtalk(rcurr, 'miduleX current reference info for row: '..ltt.mrX.settings.pgcntr)
     --ltt.debugtalk(rcurrc, 'miduleX current cleveref cref info')
     if  rcurr[2] ~= rprev[2] then  -- pg no is second element
         return true
     end
     return false
 end
+
+
+return ltt -- lutabulartools
+
+
+
+--http://ctan.mirror.rafal.ca/macros/latex/contrib/multirow/multirow.pdf
+--http://ctan.mirror.colo-serv.net/macros/latex/contrib/makecell/makecell.pdf
+-- https://tex.stackexchange.com/questions/331716/newline-in-multirow-environment
+
 
 
 
@@ -461,10 +481,25 @@ end
 --    help_wrt(ltt.col_spec,s)
 --end
 
-return ltt -- lutabulartools
 
-
-
---http://ctan.mirror.rafal.ca/macros/latex/contrib/multirow/multirow.pdf
---http://ctan.mirror.colo-serv.net/macros/latex/contrib/makecell/makecell.pdf
--- https://tex.stackexchange.com/questions/331716/newline-in-multirow-environment
+-- todo move mrX mechanim to avoid @{}
+--function ltt.mrX.set_midruleX(new_sett, def)
+--    def = def or ''
+--    local curr_sett = {}
+--    if def == pl.tex._xTrue then  -- default flag, if true, reset all non-used keys to default
+--        curr_sett = ltt.mrX.defaults
+--    else
+--        curr_sett = ltt.mrX.settings
+--    end
+--    new_sett = luakeys.parse(new_sett)
+--    ltt.mrX.settings = T.union(curr_sett, new_sett)
+--
+--    ltt.debugtalk(ltt.mrX.settings, 'new midruleX settings')
+--    ltt.mrX.settings.cntr = tonumber(curr_sett.cntr) -- todo this needs to be a settings var
+--    if new_sett.cntr ~= nil then -- todo fix the counter
+--        ltt.mrX.settings.cntr = tonumber(new_sett.cntr)
+--    end
+--    if new_sett.head ~= nil then -- todo fix the counter
+--        ltt.mrX.settings.cntr = -1*tonumber(new_sett.head)
+--    end
+--end

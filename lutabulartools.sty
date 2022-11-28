@@ -46,15 +46,19 @@
 
 %%% midrule every X rows
 
-\def\midruleX{\aftergroup\aftergroup\aftergroup\midruleX@aux}
-\def\midruleX@aux{\luadirect{lutabt.mrX.midruleX('')}}  % todo argument for vadjust or noalign??
-\NewDocumentCommand{\setmidruleX}{s O{N} m}{%
+% NO LONGER NEEDED  %%% this was used for @{\midruleX} in colspec, but I made a better way
+%\def\midruleX{\aftergroup\aftergroup\aftergroup\midruleX@aux}
+%\def\midruleX@aux{\luadirect{lutabt.mrX.midruleX('')}}  %
+%%%
+
+\NewDocumentCommand{\midruleX}{s O{N} m}{%
   \MakeluastringCommands[N]{#2}%
   \luadirect{lutabt.mrX.set_midruleX(\plluastringA{#3}, \luastring{#1})}%
 }
-\NewDocumentCommand{\midruleXreset}{O{0}}{\luadirect{lutabt.mrX.cntr = tonumber(\luastring{#1})}}
-\NewCommandCopy\resetmidruleX\midruleXreset
+\NewDocumentCommand{\resetmidruleX}{O{0}}{\luadirect{lutabt.mrX.reset_midruleX(\luastring{#1})}}
 
+
+\def\ltt@midruleXoff{\luadirect{lutabt.mrX.off()}}
 
 
 %%%%
@@ -140,14 +144,21 @@
 
 \NewDocumentCommand{\midrulesat}{m}{\luadirect{lutabt.add_auto_midrules(\luastring{#1})}}
 
-
-
-
 \NewDocumentCommand{\settabular}{s m}{\luadirect{lutabt.set_tabular(\luastring{#2})}} % make kv interface for auto
 
 \def\ltt@resetrownum{\luadirect{lutabt.reset_rows()}}
 \def\ltt@autotoprule{\luadirect{lutabt.process_auto_topbot_rule('top')}}
 \def\ltt@autobotrule{\luadirect{lutabt.process_auto_topbot_rule('bottom')}}
+\def\ltt@storeautotbandfalse{\luadirect{lutabt.auto_topbot_old = lutabt.auto_topbot
+  lutabt.auto_topbot = false}}
+\def\ltt@restoreautotb{\luadirect{lutabt.auto_topbot = lutabt.auto_topbot_old}}
+\def\ltt@inctablelevel{\luadirect{lutabt.tablelevel = lutabt.tablelevel + 1}}
+\def\ltt@dectablelevel{\luadirect{lutabt.tablelevel = lutabt.tablelevel - 1}}
+\apptocmd{\@arraycr}{\luadirect{lutabt.process_auto_rules()}}{}{}
+
+%\apptocmd{\LTXtable}{\ltt@midruleXoff}{}{}
+
+
 
 \let\oldtabular\tabular
 \let\oldendtabular\endtabular
@@ -155,9 +166,7 @@
   \luadirect{lutabt.set_col_spec(\luastringN{#2})}%
   \oldtabular[#1]{\lttltrim#2\lttrtrim}\ltt@inctablelevel\ltt@resetrownum\ltt@autotoprule%
 }
-\def\endtabular{\ltt@autobotrule\ltt@dectablelevel\oldendtabular}
-
-
+\def\endtabular{\ltt@autobotrule\ltt@midruleXoff\ltt@dectablelevel\oldendtabular}
 
 
 \expandafter\let\expandafter\oldtabulars\csname tabular*\endcsname
@@ -166,26 +175,20 @@
   \luadirect{lutabt.set_col_spec(\luastringN{#3})}%
   \begin{oldtabulars}{#1}[#2]{\lttltrim#3\lttrtrim}\ltt@inctablelevel\ltt@resetrownum\ltt@autotoprule%
 }{%
-  \ltt@autobotrule\ltt@dectablelevel\end{oldtabulars}%
+  \ltt@autobotrule\ltt@midruleXoff\ltt@dectablelevel\end{oldtabulars}%
 }
 %%% NOTE tabularx uses tabular*, NO NEED TO CHANGE TABULARX!
 
+
 \let\oldlongtable\longtable
 \RenewExpandableDocumentCommand{\longtable}{ O{l} m }{%
-  \luadirect{lutabt.auto_topbot_old = lutabt.auto_topbot
-  lutabt.auto_topbot = false}%
+  \ltt@storeautotbandfalse%
   \luadirect{lutabt.set_col_spec(\luastringN{#2})}%
   \oldlongtable[#1]{\lttltrim#2\lttrtrim}\ltt@inctablelevel\ltt@resetrownum%
 }
 \let\oldendlongtable\endlongtable
-\def\endlongtable{\luadirect{lutabt.auto_topbot = lutabt.auto_topbot_old}
-  \ltt@dectablelevel\oldendlongtable}% restore status of auto topbot rule
+\def\endlongtable{\ltt@restoreautotb\ltt@midruleXoff\ltt@dectablelevel\oldendlongtable}% restore status of auto topbot rule
 
-\apptocmd{\@arraycr}{\luadirect{lutabt.process_auto_rules()}}{}{}
-
-
-\def\ltt@inctablelevel{\luadirect{lutabt.tablelevel = lutabt.tablelevel + 1}}
-\def\ltt@dectablelevel{\luadirect{lutabt.tablelevel = lutabt.tablelevel - 1}}
 
 %s0,spec,mcspec,pre,content
 % Magic Cell

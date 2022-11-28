@@ -104,7 +104,7 @@ The following packages are loaded if not already, so if you have specific settin
 {penlight}
 }.
 
-\section{settabular}
+\section{\texttt{\textbackslash settabular}}
 
 A key-val interface in the \cmd{\settabular{}} command is used to set some tabular settings.
 \cmd{nopad} automatically adds \cmd{@{}} on each end of the column spec.\\
@@ -175,11 +175,7 @@ You may want to adjust the column specification of a multicolumn  cell,\\
 You can place formatting like \cmd{\bfseries} here.
 
 
-\subsection{midrulesat}
-If you'd rather specify the location of midrules outside the table, use \cmd{\midrulesat{1,2,3}}: a midrule will be
-placed on rows 1, 2, and 3, for the next table only.
-
-\subsection{Defaults}\label{s.def}
+\subsection{\texttt{\textbackslash MC} Defaults}\label{s.def}
 The \cmd{tabular[*]} environment is re-defined to use Lua pattern matching
 to parse the column specification of the table. This is done to determine how many columns there are,
 and what the current column type is, even if specifications like \cmd{r@{.}l*{3}{r}} are used.
@@ -192,14 +188,16 @@ To add a column that should be surrounded by brackets for \cmd{siunitx} purposes
 S is included by default.
 
 
+\section{\texttt{\textbackslash midrulesat}}
+If you'd rather specify the location of midrules outside the table, use \cmd{\midrulesat{1,2,3}}: a midrule will be
+placed on rows 1, 2, and 3, for the next table only.
 
-\subsection{Examples}
+
+\section{Examples}
 
 \let\nl\\
 
-
 Change the settings for the rest of the doc.
-
 
 \begin{LTXexample}
 \settabular{nopad,tbrule}
@@ -367,26 +365,24 @@ Here's an example:
 \end{LTXexample}
 
 
-\subsection{Midrule every X\textsuperscript{th} row}
+\section{\texttt{\textbackslash midruleX} - Midrule every X\textsuperscript{th} row}
 
-\llcmd{\midruleX}%
 With this command, you can place a rule
-every X rows.
-To use, place \cmd{@{\midruleX}} at the end of the tabular column spec, eg. \cmd{\begin{tabular}{ll@{\midruleX}}..}.
+every X rows for the next table made (place command outside of table).
 You can configure the step size and what kind of midrule you prefer with the following key-val syntax, with default values below:\\
-\cmd{\setmidruleX{step=5,rule=midrule,reset=false,resetnum=0,cntr=0}}\\
+\cmd{\midruleX{step=5,rule=midrule,cntr=0,head=0,long=false,longhead=0}}\\
 \cmd{step} is the number of rows (X) before applying the rule set by \cmd{rule}. \\
-Concering \cmd{longtable}s: If \cmd{reset} is set to \cmd{true},
+Concering \cmd{longtable}s: If \cmd{long} is set to \cmd{true} (or the key is present),
 \cmd{\midruleX} will also add a unique \cmd{\label{}} on each row, and if the row starts on a newpage,
-resets the row counter to \cmd{resetnum}, to ensure you have the same X number of rows after the header of each page of a \cmd{longtable}.\\
+resets the row counter to -1*\cmd{longhead}, to ensure you have the same X number of rows after the header of each page of a \cmd{longtable}.\\
 The starred version of first reverts the settings to default, then loads your inputted settings, which the non-starred
-version only overwrites the settings specified. \cmd{\setmidruleX*{}} will restore to default.
-Use optional parameter  \cmd{\setmidruleX*[o|n|f]{}}
+version only overwrites the settings specified. \cmd{\midruleX*{}} will restore to default.
+Use optional parameter  \cmd{\midruleX*[o|n|f]{}}
 to control expansion of the key-val settings (\cmd{[n]} for not expanded is default).
 Before you want counting to begin, you should
-apply \cmd{\resetmidruleX}  to avoid header rows being counted.
+apply \cmd{\resetmidruleX[cntr]}  to avoid header rows being counted and set the row \cmd{cntr} to an arbitrary value,
+or in \cmd{\midruleX} set \cmd{head=x} which is equivalent to \cmd{cntr=-x}.
 Use \cmd{\noalign{\resetmiduleX}} if you need place a rule on the same line the reset takes place, or in a cell before \cmd{\\}.
-Note that \cmd{\resetmidruleX} resets the row counter to 0, and is in effect, a short-cut for \cmd{\setmidruleX{}} or \cmd{\setmidruleX{cntr=0}}
 
 
 %
@@ -396,16 +392,18 @@ Note that \cmd{\resetmidruleX} resets the row counter to 0, and is in effect, a 
 
 %
 \begin{LTXexample}
-\setmidruleX{step=3,rule=gmidrule}
-\begin{tabular}{rclc@{\midruleX}}
+\midruleX{step=3,rule=gmidrule,head=1}
+\midrulesat{1}
+\begin{tabular}{rclc}
                 % ^^^ inject midruleX
 Num  & . & . & .  \\
-\midrule\resetmidruleX
+%\midrule % not needed with midrulesat
+%\resetmidruleX % not needed w/ head
 % reset so header dont count
 1    & & &  \\
 2    & & &  \\
 3    & & &  \\
-4    & & &  \\
+4    & \MC[2,2]{Hi\\world}  \\
 5    & & &  \\
 6    & & &  \\
 7    & & &  \\
@@ -425,45 +423,16 @@ Num  & . & . & .  \\
 
 \pagebreak
 
+%\midrulesat{1,2,14} % todo must check
+
+
 Here's an example with long table. Notice the gray rules reliably appear 3 rows after each header.
 \begin{verbatim}
-\setmidruleX{reset=true,resetnum=0,rule="\gcmidrules{1r,2-}"}
-\def\tblhead{\toprule No & Name & Place & other\\\midrule}
-\def\tblcontinued{\MC[+l]{Continued...}\\}
-\def\tblcontinues\MC[+r]{...Continues}\\}
-\begin{longtable}{rclc@{\midruleX}}
-  \tblhead\endfirsthead
-  \tblcontinued\head\endhead % all the lines above this will be repeated on every page
-  \tblcontinues\endfoot
-  \bottomrule End.\endlastfoot
-  \resetmidruleX
-1       &           &       &  \\
-2       &           &       &    \\
-3       &           &       &    \\
-4       &           &       &    \\
-5       &           &       &    \\
-6       &           &       &    \\
-7       &           &       &    \\
-8       &           &       &    \\
-9       &           &       &    \\
-10      &           &       &    \\
-11      &           &       &    \\
-12      &           &       &    \\
-13      &           &       &    \\
-14      &           &       &    \\
-15      &           &       &    \\\newpage
-16      &           &       &    \\
-17      &           &       &    \\
-18      &           &       &    \\\resetmidruleX
-19      &           &       &    \\
-\end{longtable}
-\end{verbatim}
-
-\setmidruleX{reset=true,resetnum=0,rule="\gcmidrules{1r,2-}"}
+\midruleX{long=true,step=3,rule="\gcmidrules{1r,2-}"}
 \def\tblhead{\toprule No & Name & Place & other\\\midrule}
 \def\tblcontinued{\MC[+l]{Continued...}\\}
 \def\tblcontinues{\MC[+r]{...Continues}\\}
-\begin{longtable}{rclc@{\midruleX}}
+\begin{longtable}{rclc}
   \tblhead\endfirsthead
   \tblcontinued\tblhead\endhead % all the lines above this will be repeated on every page
   \tblcontinues\endfoot
@@ -480,18 +449,67 @@ Here's an example with long table. Notice the gray rules reliably appear 3 rows 
 9       &           &       &    \\
 10      &           &       &    \\
 11      &           &       &    \\
-12      &           &       &    \\
+12      & \MC[2,2]{Hi\\world}     \\
 13      &           &       &    \\
 14      &           &       &    \\
 15      &           &       &    \\\newpage
-16      &           &       &    \\
+16      &   \MC[2,2]{Hi\\world}     \\
+17      &           &       &    \\
+18      &           &       &    \\\resetmidruleX
+19      &           &       &    \\
+\end{longtable}
+\end{verbatim}
+
+\midruleX{long=true,step=3,rule="\gcmidrules{1r,2-}"}
+\def\tblhead{\toprule No & Name & Place & other\\\midrule}
+\def\tblcontinued{\MC[+l]{Continued...}\\}
+\def\tblcontinues{\MC[+r]{...Continues}\\}
+\begin{longtable}{rclc}
+  \tblhead\endfirsthead
+  \tblcontinued\tblhead\endhead % all the lines above this will be repeated on every page
+  \tblcontinues\endfoot
+  \bottomrule End.\endlastfoot
+  \resetmidruleX
+1       &           &       &  \\
+2       &           &       &    \\
+3       &           &       &    \\
+4       &           &       &    \\
+5       &           &       &    \\
+6       &           &       &    \\
+7       &           &       &    \\
+8       &           &       &    \\
+9       &           &       &    \\
+10      &           &       &    \\
+11      &           &       &    \\
+12      & \MC[2,2]{Hi\\world}     \\
+13      &           &       &    \\
+14      &           &       &    \\
+15      &           &       &    \\\newpage
+16      &   \MC[2,2]{Hi\\world}     \\
 17      &           &       &    \\
 18      &           &       &    \\\resetmidruleX
 19      &           &       &    \\
 \end{longtable}
 
+\begin{tabular}{l}
+  a \\
+  b \\
+  v \\
+  d \\
+  r \\
+\end{tabular}
+
+Long table X example
 
 \LTXtable{\linewidth}{ltxexample}
 
+  
+\begin{tabular}{l}
+  a \\
+  b \\
+  v \\
+  d \\
+  r \\
+\end{tabular}
 
 \end{document}
