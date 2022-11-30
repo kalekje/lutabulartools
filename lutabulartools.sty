@@ -39,6 +39,7 @@
 
 \newcommand{\lttdebugON}{\luadirect{lutabt.debug = true}}
 \newcommand{\lttdebugOFF}{\luadirect{lutabt.debug = true}}
+\newcommand{\lttdebugprt}{\luadirect{__lutabt__debugprtall()}}
 
 \newcolumntype{\lttltrim}{}
 \newcolumntype{\lttrtrim}{}
@@ -58,7 +59,26 @@
 \NewDocumentCommand{\resetmidruleX}{O{0}}{\luadirect{lutabt.mrX.reset_midruleX(\luastring{#1})}}
 
 
+\NewDocumentCommand{\settabular}{s m}{\luadirect{lutabt.set_tabular(\luastring{#2})}} %
+
+\def\ltt@resetrownum{\luadirect{lutabt.reset_rows()}}
+\def\ltt@resetrownumhard{\luadirect{lutabt.row_num = 0}}
+\def\ltt@autotoprule{\luadirect{lutabt.process_auto_topbot_rule('top')}}
+\def\ltt@autobotrule{\luadirect{lutabt.process_auto_topbot_rule('bottom')}}
+\def\ltt@storeautotbandfalse{\luadirect{
+  lutabt.auto_topbot_old = lutabt.auto_topbot
+  lutabt.auto_topbot = false}}
+\def\ltt@restoreautotb{\luadirect{lutabt.auto_topbot = lutabt.auto_topbot_old}}
+\def\ltt@inctablelevel{\luadirect{lutabt.tablelevel = lutabt.tablelevel + 1}}
+\def\ltt@dectablelevel{\luadirect{lutabt.tablelevel = lutabt.tablelevel - 1}}
 \def\ltt@midruleXoff{\luadirect{lutabt.mrX.off()}}
+\def\ltt@actlevelreset{\luadirect{lutabt.actlvl = 1}}
+
+\apptocmd{\@arraycr}{\luadirect{lutabt.process_auto_rules()}}{}{}
+
+
+
+\NewDocumentCommand{\midrulesat}{m}{\luadirect{lutabt.add_auto_midrules(\luastring{#1})}}
 
 
 %%%%
@@ -142,22 +162,10 @@
 
 
 
-\NewDocumentCommand{\midrulesat}{m}{\luadirect{lutabt.add_auto_midrules(\luastring{#1})}}
 
-\NewDocumentCommand{\settabular}{s m}{\luadirect{lutabt.set_tabular(\luastring{#2})}} % make kv interface for auto
 
-\def\ltt@resetrownum{\luadirect{lutabt.reset_rows()}}
-\def\ltt@autotoprule{\luadirect{lutabt.process_auto_topbot_rule('top')}}
-\def\ltt@autobotrule{\luadirect{lutabt.process_auto_topbot_rule('bottom')}}
-\def\ltt@storeautotbandfalse{\luadirect{lutabt.auto_topbot_old = lutabt.auto_topbot
-  lutabt.auto_topbot = false}}
-\def\ltt@restoreautotb{\luadirect{lutabt.auto_topbot = lutabt.auto_topbot_old}}
-\def\ltt@inctablelevel{\luadirect{lutabt.tablelevel = lutabt.tablelevel + 1}}
-\def\ltt@dectablelevel{\luadirect{lutabt.tablelevel = lutabt.tablelevel - 1}}
-\apptocmd{\@arraycr}{\luadirect{lutabt.process_auto_rules()}}{}{}
 
-%\apptocmd{\LTXtable}{\ltt@midruleXoff}{}{}
-
+\apptocmd{\LTXtable}{\ltt@actlevelreset\ltt@resetrownumhard\luadirect{lutabt.tablelevel=0}}{}{}
 
 
 \let\oldtabular\tabular

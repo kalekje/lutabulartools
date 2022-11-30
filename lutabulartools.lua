@@ -30,32 +30,33 @@ if (__PL_EXTRAS__ == nil) or  (__PENLIGHT__ == nil) then
 end
 local T = pl.tablex
 
-local ltt = {}
+local lutabt = {}
 
-ltt.tablelevel = 0
+lutabt.tablelevel = 0
 
-ltt.debug = false
+lutabt.debug = false
 
-ltt.auto_topbot = false
-ltt.auto_topbot_old = false
+lutabt.auto_topbot = false
+lutabt.auto_topbot_old = false
 
-ltt.auto_crules = {} -- {{span,trim}, } appearance is like this, 'range|trim', -- auto_rules created by MC
-ltt.auto_midrules = {}
+lutabt.auto_crules = {} -- {{span,trim}, } appearance is like this, 'range|trim', -- auto_rules created by MC
+lutabt.auto_midrules = {}
 
-ltt.col_spec1 = {} -- column spec if one column wide (since makcell nests a tabular, preserve col_spec below)
-ltt.col_spec = {} -- tab column spec if above 1
-ltt.col = '' -- current column spec, single char, only applies to tabular with more than 1 column
-ltt.col_num = 1 -- current column number
-ltt.row_num = 0 -- current row number
+lutabt.col_spec1 = {} -- column spec if one column wide (since makcell nests a tabular, preserve col_spec below)
+lutabt.col_spec = {} -- tab column spec if above 1
+lutabt.col = '' -- current column spec, single char, only applies to tabular with more than 1 column
+lutabt.col_num = 1 -- current column number
+lutabt.row_num = 0 -- current row number
 
+lutabt.actlvl = 1 -- 'active' level on which to apply midrules, normally 1
 
-ltt.col_ver_repl = {
+lutabt.col_ver_repl = {
 m = 'm',
 M = 'm',
 b = 'b',
 }
 
-ltt.col_hor_repl = { -- horizontal cell alignment that multicolumn should use if () or [hori] not passed to func
+lutabt.col_hor_repl = { -- horizontal cell alignment that multicolumn should use if () or [hori] not passed to func
     l = 'l',
     c = 'c',
     r = 'r',
@@ -71,11 +72,11 @@ ltt.col_hor_repl = { -- horizontal cell alignment that multicolumn should use if
 }
 
 -- allow user to place their own replacements in for a table, say if they define a column that expands to multiple
-ltt.col_replaces = {
+lutabt.col_replaces = {
 --x = 'lll'
 }
 
-ltt.SI_cols = {'S', 'N', 'Q', 'L', 'R'}
+lutabt.SI_cols = {'S', 'N', 'Q', 'L', 'R'}
 
 
 
@@ -84,24 +85,33 @@ ltt.SI_cols = {'S', 'N', 'Q', 'L', 'R'}
 -----
 
 
-function ltt.debugtalk(s, ss)
+function lutabt.debugtalk(s, ss)
     ss = ss or ''
-    if ltt.debug then
+    if lutabt.debug then
         pl.tex.help_wrt(s, ss..' (lutabulartools)')
     end
 end
 
+function __lutabt__debugprtall()
+    --pl.help_wrt(pl.tablex.filter({ lutabt }, function(v) return type(v) ~= 'function' end), '(lutabulartools state)')
+    pl.help_wrt(lutabt, '(lutabulartools state)')
+end
 
-function ltt.set_tabular(sett)
+
+function lutabt.set_tabular(sett)
     sett = luakeys.parse(sett)
     local trim = ''
     for k, v in pairs(sett) do
         if k == 'tbrule' then
-            ltt.auto_topbot = v
+            lutabt.auto_topbot = v
         elseif k == 'nopad' then
             if pl.hasval(v) then trim = '@{}' end -- set to trim
             tex.print('\\newcolumntype{\\lttltrim}{'..trim..'}')
             tex.print('\\newcolumntype{\\lttrtrim}{'..trim..'}')
+        elseif k =='rowsep' then
+            tex.print('\\gdef\\arraystretch{'..v..'}')
+        elseif k =='colsep' then
+            tex.print('\\global\\setlength{\\tabcolsep}{'..(v*6)..'pt'..'}')
         end
     end
 end
@@ -111,13 +121,13 @@ end
 -----       tabular utility funcs
 -----
 
-function ltt.reset_rows()
-    if ltt.tablelevel == 1 then
-        ltt.row_num = 0
+function lutabt.reset_rows()
+    if lutabt.isactlevel() then
+        lutabt.row_num = 0
     end
 end
 
-function ltt.set_col_num()
+function lutabt.set_col_num()
     -- register current column info (column number and specification)
     local nest
     for i = tex.nest.ptr, 1, -1 do
@@ -132,16 +142,16 @@ function ltt.set_col_num()
       for _, sub in node.traverse_id(node.id'unset', nest.head) do
         col = col + sub + 1
       end
-      ltt.col_num = col
+      lutabt.col_num = col
     else
-      ltt.col_num = 1
+      lutabt.col_num = 1
     end
-    ltt.col = ltt.col_spec[ltt.col_num]
-    ltt.debugtalk('col_num='..ltt.col_num..'; col_spec='..ltt.col,'set_col_num')
+    lutabt.col = lutabt.col_spec[lutabt.col_num]
+    lutabt.debugtalk('col_num='..lutabt.col_num..'; col_spec='..lutabt.col,'set_col_num')
 end
 
 
-function ltt.set_col_spec(zz)
+function lutabt.set_col_spec(zz)
     -- contents of string 'zz'
     -- register the table column specification
     zz = zz:gsub ( "%*%s-{(%d-)}%s-(%b{})" ,     -- expand expressions such as "*{5}{l}" to "lllll"
@@ -149,15 +159,15 @@ function ltt.set_col_spec(zz)
     zz = zz:gsub ( "%b{}" , "" ) -- omit all stuff in curly braces and square
     zz = zz:gsub ( "%b[]" , "" )
     zz = zz:gsub ( "[@!|><%s%*\']" , "" )  -- some more characters to ignore
-    zz = zz:gsub('%a', ltt.col_replaces) -- sub extra column
+    zz = zz:gsub('%a', lutabt.col_replaces) -- sub extra column
     _col_spec = zz:totable() -- requires pl extras
     --help_wrt(_col_spec, 'helpme')
     if #_col_spec > 1 then
-        ltt.col_spec = _col_spec
+        lutabt.col_spec = _col_spec
     else
-        ltt.col_spec1 = _col_spec
+        lutabt.col_spec1 = _col_spec
     end
-    ltt.debugtalk(ltt.col_spec,'set_col_spec')
+    lutabt.debugtalk(lutabt.col_spec,'set_col_spec')
 end
 
 
@@ -172,23 +182,26 @@ end
 -----       magic cell and helpers
 -----
 
-function ltt.MagicCell(s0,spec,mcspec,pre,content,trim)
+function lutabt.MagicCell(s0,spec,mcspec,pre,content,trim)
+    -- todo delete trim!!!
     --
-    ltt.set_col_num() -- register current column number and column spec
+    lutabt.set_col_num() -- register current column number and column spec
 
     local STR = ''
     pl.tex.reset_bkt_cnt()
 
-    local v, h, r, c, mrowsym, skipmakecell = ltt.parse_MagicCell_spec(spec) -- get v/h align, number rows/columns
+    local spec, iscmidrule, trim = lutabt.check_MC_cmidrule(spec) -- check for cmidrule and clean spec
+
+    local v, h, r, c, mrowsym, skipmakecell = lutabt.parse_MagicCell_spec(spec) -- get v/h align, number rows/columns
 
     local mcspec = mcspec or ''
 
-    h, mcspec, c = ltt.get_HColSpec(h, mcspec, c)  -- infer horizontal alignment, num columns
+    h, mcspec, c = lutabt.get_HColSpec(h, mcspec, c)  -- infer horizontal alignment, num columns
 
-    ltt.debugtalk(pl.List{v, h, r, c, mcspec}:join'; ','v, h, r, c, mcspec')
+    lutabt.debugtalk(pl.List{v, h, r, c, mcspec}:join'; ','v, h, r, c, mcspec')
 
     --help_wrt(_CurTabColAbv,'current column')
-    if s0 == pl.tex._xTrue or (pl.List(ltt.SI_cols):contains(ltt.col) -- special columns for SI
+    if s0 == pl.tex._xTrue or (pl.List(lutabt.SI_cols):contains(lutabt.col) -- special columns for SI
             and c == '') then -- multicolumn cannot have {} around it
         STR = STR .. '{'                                       -- multirow and makcell must have {} around it S column is used
         pl.tex.add_bkt_cnt()
@@ -218,17 +231,30 @@ function ltt.MagicCell(s0,spec,mcspec,pre,content,trim)
     STR = STR..content..pl.tex.close_bkt_cnt()
     --Troubleshooting
     --help_wrt(STR..' <<< magic cell string')
-    ltt.debugtalk(STR,'MagicCell')
+    lutabt.debugtalk(STR,'MagicCell')
     tex.sprint(STR)--tex print the STR
 
-    local en
-    if c == '' then en = ltt.col_num else en = ltt.col_num + c -1 end
-    ltt.add_auto_crule(ltt.col_num, en, trim)
+    if iscmidrule then
+        local en
+        if c == '' then en = lutabt.col_num else en = lutabt.col_num + c -1 end
+        lutabt.add_auto_crule(lutabt.col_num, en, trim)
+    end
 end
 
 
+function lutabt.check_MC_cmidrule(spec)
+    local iscmidrule = false
+    local trim = ''
+    local st, en = spec:find('_')
+    if st ~= nil then
+        trim = spec:sub(st+1, #spec)
+        spec = spec:sub(1,st-1)
+        iscmidrule = true
+    end
+    return spec, iscmidrule, trim
+end
 
-function ltt.parse_MagicCell_spec(spec)
+function lutabt.parse_MagicCell_spec(spec)
     local mrowsym = '*' -- *  = natural width, = will match p{2cm} for example
     local skipmakecell = false
     if string.find(spec, '=')  then
@@ -239,7 +265,7 @@ function ltt.parse_MagicCell_spec(spec)
 
     spec = spec:lower():gsub('%s','')  -- take lower case and remove space
     local vh, rc = spec:gextract('%a')  -- extract characters
-    local v = vh:gfirst({'t', 'm', 'b'}) or ltt.col_ver_repl[ltt.col] or 't'
+    local v = vh:gfirst({'t', 'm', 'b'}) or lutabt.col_ver_repl[lutabt.col] or 't'
     local h = vh:gfirst({'l', 'c', 'r'}) or ''
     v = v:gsub('m', 'c')
 
@@ -253,27 +279,27 @@ function ltt.parse_MagicCell_spec(spec)
 end
 
 
-function ltt.get_HColSpec(h, mcspec, c) -- take horizontal alignment
+function lutabt.get_HColSpec(h, mcspec, c) -- take horizontal alignment
     -- c is num columns, h is horizontal alginment,
     --Assumes _TabColNum was calculated previosly
      if c == '+' then  -- fill row to end
-        c =  tostring(#ltt.col_spec -  ltt.col_num + 1)
+        c =  tostring(#lutabt.col_spec -  lutabt.col_num + 1)
     end
     if h == '' then -- if horizontal not provided, use declared column
-        h = ltt.col_hor_repl[ltt.col] or 'l'
+        h = lutabt.col_hor_repl[lutabt.col] or 'l'
     end
     if c ~= '' then -- only make new mcspec if column nums > 0
         if mcspec == '' then -- and if no mcspec was passed
             mcspec = h
-            if ltt.col_num == 1 then -- if first column, auto detect padding
+            if lutabt.col_num == 1 then -- if first column, auto detect padding
                 mcspec = '@{}'..mcspec
             end
-            if (ltt.col_num + tonumber(c) - 1) == #ltt.col_spec then  -- if end on last column
+            if (lutabt.col_num + tonumber(c) - 1) == #lutabt.col_spec then  -- if end on last column
                 mcspec = mcspec..'@{}'
             end
         else -- if mcspec if given, extract the alignment
-            ltt.set_col_spec(mcspec)
-            h = ltt.col_spec1[1] -- get 1 character column spec from mcspec and override h
+            lutabt.set_col_spec(mcspec)
+            h = lutabt.col_spec1[1] -- get 1 character column spec from mcspec and override h
         end
     end
     return h, mcspec, c
@@ -284,48 +310,51 @@ end
 -----       autorules (with \MC() or auto top bot or midrule X, performed after \\
 -----
 
-function ltt.add_auto_midrules(rows)
-    ltt.auto_midrules = rows:split(',')
+function lutabt.add_auto_midrules(rows)
+    lutabt.auto_midrules = rows:split(',')
 end
 
-function ltt.add_auto_crule(st,en,trim)
+function lutabt.add_auto_crule(st,en,trim)
     if trim ~= 'x' then
-        ltt.auto_crules[#ltt.auto_crules + 1] = {math.floor(st)..'-'..math.floor(en), trim} -- append here
+        lutabt.auto_crules[#lutabt.auto_crules + 1] = {math.floor(st)..'-'..math.floor(en), trim} -- append here
         -- {{span 1-2, trim}, ..}
     end
 end
 
+function lutabt.isactlevel()
+    lutabt.tablelevel = tonumber(lutabt.tablelevel)
+    lutabt.actlvl = tonumber(lutabt.actlvl)
+    return lutabt.actlvl == lutabt.tablelevel
+end
 
-function ltt.process_auto_rules()
-    if ltt.tablelevel == 1 then
-        ltt.row_num = ltt.row_num + 1
-        if ltt.auto_crules ~= {} then
-            for _, v in ipairs(ltt.auto_crules) do
-                ltt.make1cmidrule('', v[2], v[1], 'cmidrule')
+
+function lutabt.process_auto_rules()
+    if lutabt.isactlevel() then
+        lutabt.row_num = lutabt.row_num + 1
+        if lutabt.auto_crules ~= {} then
+            for _, v in ipairs(lutabt.auto_crules) do
+                lutabt.make1cmidrule('', v[2], v[1], 'cmidrule')
             end
-            for i, v in ipairs(ltt.auto_midrules) do
-                if tonumber(v) == ltt.row_num then
-                    _ = table.remove(ltt.auto_midrules,i)
+            for i, v in ipairs(lutabt.auto_midrules) do
+                if tonumber(v) == lutabt.row_num then
+                    _ = table.remove(lutabt.auto_midrules,i)
                     tex.print('\\midrule ')
                 end
             end
         end
-
-    end
-    if ltt.tablelevel == ltt.mrX.settings.lvl then -- ltx lvl is 3, this is a hack to work around it
-        if ltt.mrX.settings.on then
-            ltt.mrX.midruleX()
+        if lutabt.mrX.settings.on then
+            lutabt.mrX.midruleX()
         end
     end
-    ltt.auto_crules = {}
+    lutabt.auto_crules = {}
 end
 
 
 
 
-function ltt.process_auto_topbot_rule(rule)
-    if ltt.tablelevel == 1 then
-        if ltt.auto_topbot then
+function lutabt.process_auto_topbot_rule(rule)
+    if lutabt.isactlevel() then
+        if lutabt.auto_topbot then
             tex.print('\\'..rule..'rule ')
         end
     end
@@ -342,19 +371,19 @@ end
 
 
 
-function ltt.get_midrule_col(s)
+function lutabt.get_midrule_col(s)
     if string.find(s, '+')  then
         s = s:gsub('+', '')
         if (s == '') or (s == '0') then
             s = 1
         end
-        s = tostring(#ltt.col_spec - tonumber(s) + 1) -- use number of tabular columns above 0,
+        s = tostring(#lutabt.col_spec - tonumber(s) + 1) -- use number of tabular columns above 0,
     end
     return s
 end
 
 
-function ltt.make1cmidrule(s, r, c, cmd) -- s=square r=round c=curly
+function lutabt.make1cmidrule(s, r, c, cmd) -- s=square r=round c=curly
     cmd = '\\'..cmd
     if s ~= '' then
         cmd = cmd..'['..s..']'
@@ -369,19 +398,19 @@ function ltt.make1cmidrule(s, r, c, cmd) -- s=square r=round c=curly
     if t[2] == nil then
         t[2] = t[1]
     end
-    c = ltt.get_midrule_col(t[1])..'-'..ltt.get_midrule_col(t[2])
+    c = lutabt.get_midrule_col(t[1])..'-'..lutabt.get_midrule_col(t[2])
     cmd = cmd..'{'..c..'}'
-    ltt.debugtalk(cmd,'make1cmidrule')
+    lutabt.debugtalk(cmd,'make1cmidrule')
     tex.print(cmd)
 end
 
-function ltt.makecmidrules(s, r, c, cmd)
+function lutabt.makecmidrules(s, r, c, cmd)
     for k, c1 in pairs(string.split(c, ',')) do
         r1, c2 = c1:gextract('%a')
         if r1 == '' then -- if nothing passed in with the column
             r1 = r -- set to the global value passed in round brackets
         end
-        ltt.make1cmidrule(s, r1:strip(), c2:strip(), cmd)
+        lutabt.make1cmidrule(s, r1:strip(), c2:strip(), cmd)
     end
 end
 
@@ -390,57 +419,65 @@ end
 -----         midruleX
 -----
 
-ltt.mrX = {}
-ltt.mrX.resets = {long=false, longhead=0, cntr=0, head=nil, on=true, lvl=1, ltx=false} -- settings that reset when \setmidruleX used
-ltt.mrX.settings = T.update(T.copy(ltt.mrX.resets), {pgcntr=0, step=5, rule='midrule'}) -- current settings
+lutabt.mrX = {}
+lutabt.mrX.resets = {long=false, longhead=0, cntr=0, head=nil, longx=false, on=true} -- settings that reset when \setmidruleX used
+lutabt.mrX.resets['head*'] = nil
+lutabt.mrX.settings = T.update(T.copy(lutabt.mrX.resets), {pgcntr=0, step=5, rule='midrule'}) -- current settings, not overwritten with each call
 
 
-function ltt.mrX.reset_midruleX(n)
-    ltt.mrX.settings.cntr = tonumber(n)
+function lutabt.mrX.reset_midruleX(n)
+    lutabt.mrX.settings.cntr = tonumber(n)
 end
 
-function ltt.mrX.off()
-    if ltt.tablelevel == ltt.mrX.settings.lvl then
-        ltt.mrX.settings.on = false
+function lutabt.mrX.off()
+    if lutabt.isactlevel() then
+        lutabt.mrX.settings.on = false
     end
 end
 
-function ltt.mrX.set_midruleX(new_sett, def)
-    ltt.mrX.settings = T.update(ltt.mrX.settings, T.union(ltt.mrX.resets, luakeys.parse(new_sett)))
-    ltt.debugtalk(ltt.mrX.settings, 'new midruleX settings')
-    if ltt.mrX.settings.head ~= nil then
-        ltt.mrX.settings.cntr = -1*tonumber(ltt.mrX.settings.head)
+function lutabt.mrX.set_midruleX(new_sett, def)
+    lutabt.mrX.settings = T.update(lutabt.mrX.settings, T.union(lutabt.mrX.resets, luakeys.parse(new_sett)))
+    lutabt.debugtalk(lutabt.mrX.settings, 'new midruleX settings')
+    if lutabt.mrX.settings.head ~= nil then
+        lutabt.mrX.settings.cntr = -1*tonumber(lutabt.mrX.settings.head)
+    elseif lutabt.mrX.settings['head*'] ~= nil then
+        lutabt.mrX.settings.cntr = -1*tonumber(lutabt.mrX.settings['head*'])
+       lutabt.auto_midrules[#lutabt.auto_midrules + 1] =  lutabt.mrX.settings['head*']
+        lutabt.mrX.settings['head*'] = nil -- for some reason need to do this to clear head*
     end
-    if ltt.mrX.settings.ltx then -- longtable X messes with the tablelevel settings, hack to fix, use ltx keyword
-        ltt.mrX.settings.lvl = 3
+    if lutabt.mrX.settings.longx then -- longtable X messes with the tablelevel settings, hack to fix, use longx keyword
+        lutabt.actlvl = 3
+        lutabt.mrX.settings.long = true
+    else
+        lutabt.actlvl = 1
     end
 end
 
 
-function ltt.mrX.midruleX(n)
+function lutabt.mrX.midruleX(n)
     n = n or '' -- todo placeholder for noalign ?
-    ltt.debugtalk(ltt.mrX.settings, 'midruleX here')
-    local s = ltt.mrX.settings
+    lutabt.debugtalk(lutabt.mrX.settings, 'midruleX here')
+    local s = lutabt.mrX.settings
     local rule = s.rule
-    if pl.hasval(s.long) and ltt.mrX.add_label_and_check_page_change() then ltt.mrX.settings.cntr = -1*s.longhead end -- reset to number on page change
-    ltt.mrX.settings.cntr = ltt.mrX.settings.cntr + 1
-    if ltt.mrX.settings.cntr == s.step then
+    if pl.hasval(s.long) and lutabt.mrX.add_label_and_check_page_change() then lutabt.mrX.settings.cntr = -1*s.longhead end -- reset to number on page change
+    lutabt.mrX.settings.cntr = lutabt.mrX.settings.cntr + 1
+    if lutabt.mrX.settings.cntr == s.step then
         if not rule:startswith('\\') then  rule = '\\'..rule end -- todo consider allowing \gmidrule syntax, possible issue with expansion
-        ltt.debugtalk(rule, 'apply midruleX')
+        lutabt.debugtalk(rule, 'apply midruleX')
         tex.sprint(rule)
-        ltt.mrX.settings.cntr = 0
+        lutabt.mrX.settings.cntr = 0
     end
 end
 
-function ltt.mrX.add_label_and_check_page_change()
-    ltt.mrX.settings.pgcntr = ltt.mrX.settings.pgcntr + 1
-    tex.print('\\noalign{\\label{ltt@tabular@row@'..ltt.mrX.settings.pgcntr..'}}')
-    local rcurr = pl.tex.get_ref_info('ltt@tabular@row@'..ltt.mrX.settings.pgcntr)
-    local rprev = pl.tex.get_ref_info('ltt@tabular@row@'..ltt.mrX.settings.pgcntr-1)
-    --local rcurrc, _, _ = pl.tex.get_ref_info_all_cref('ltt@tabular@row@'..ltt.mrX.settings.pgcntr)
-    ltt.debugtalk('curr: '..rcurr[2]..'   prev: '..rprev[2]..'   row: '..ltt.mrX.settings.pgcntr, 'check midruleX page change')
-    ltt.debugtalk(rcurr, 'miduleX current reference info for row: '..ltt.mrX.settings.pgcntr)
-    --ltt.debugtalk(rcurrc, 'miduleX current cleveref cref info')
+function lutabt.mrX.add_label_and_check_page_change()
+    lutabt.mrX.settings.pgcntr = lutabt.mrX.settings.pgcntr + 1
+    tex.print('\\noalign{\\label{ltt@tabular@row@'..lutabt.mrX.settings.pgcntr..'}}')
+    local rcurr = pl.tex.get_ref_info('ltt@tabular@row@'..lutabt.mrX.settings.pgcntr)
+    local rprev = pl.tex.get_ref_info('ltt@tabular@row@'..lutabt.mrX.settings.pgcntr-1)
+    --local rcurrc, _, _ = pl.tex.get_ref_info_all_cref('ltt@tabular@row@'..lutabt.mrX.settings.pgcntr)
+    lutabt.debugtalk('curr: '..rcurr[2]..'   prev: '..rprev[2]..'   row: '..lutabt.mrX.settings.pgcntr, 'check midruleX page change')
+    lutabt.debugtalk(rcurr, 'miduleX current reference info for row: '..lutabt.mrX.settings.pgcntr)
+    --lutabt.debugtalk(rcurrc, 'miduleX current cleveref cref info')
     if  rcurr[2] ~= rprev[2] then  -- pg no is second element
         return true
     end
@@ -448,7 +485,7 @@ function ltt.mrX.add_label_and_check_page_change()
 end
 
 
-return ltt -- lutabulartools
+return lutabt -- lutabulartools
 
 
 
@@ -463,13 +500,13 @@ return ltt -- lutabulartools
 
 
 --
---ltt.tabular_row_pages_cntr = 0
---function ltt.reset_midruleX_on_newpage(n)
+--lutabt.tabular_row_pages_cntr = 0
+--function lutabt.reset_midruleX_on_newpage(n)
 --    local n = n or 0
---    ltt.tabular_row_pages_cntr = ltt.tabular_row_pages_cntr + 1
---    tex.print('\\noalign{\\label{tabular@row@'..ltt.tabular_row_pages_cntr..'}}')
---    if ltt.get_ref_page('tabular@row@'..ltt.tabular_row_pages_cntr) -
---            ltt.get_ref_page('tabular@row@'..(ltt.tabular_row_pages_cntr-1)) == 1 then
+--    lutabt.tabular_row_pages_cntr = lutabt.tabular_row_pages_cntr + 1
+--    tex.print('\\noalign{\\label{tabular@row@'..lutabt.tabular_row_pages_cntr..'}}')
+--    if lutabt.get_ref_page('tabular@row@'..lutabt.tabular_row_pages_cntr) -
+--            lutabt.get_ref_page('tabular@row@'..(lutabt.tabular_row_pages_cntr-1)) == 1 then
 --      tex.print('\\setcounter{midruleX}{'..n..'}')
 --    end
 --end
@@ -477,29 +514,29 @@ return ltt -- lutabulartools
 
 --help_wrt('TEST COL ')
 --for _, s in ipairs{ 'll', '*{6}{s}', 'l*{6}{l}', 'lll', 'll[]', 'll[]*{6}{l}', '*{6}{l}', 'y*{6}{sq}x', } do
---    ltt. set_col_spec(s)
---    help_wrt(ltt.col_spec,s)
+--    lutabt. set_col_spec(s)
+--    help_wrt(lutabt.col_spec,s)
 --end
 
 
 -- todo move mrX mechanim to avoid @{}
---function ltt.mrX.set_midruleX(new_sett, def)
+--function lutabt.mrX.set_midruleX(new_sett, def)
 --    def = def or ''
 --    local curr_sett = {}
 --    if def == pl.tex._xTrue then  -- default flag, if true, reset all non-used keys to default
---        curr_sett = ltt.mrX.defaults
+--        curr_sett = lutabt.mrX.defaults
 --    else
---        curr_sett = ltt.mrX.settings
+--        curr_sett = lutabt.mrX.settings
 --    end
 --    new_sett = luakeys.parse(new_sett)
---    ltt.mrX.settings = T.union(curr_sett, new_sett)
+--    lutabt.mrX.settings = T.union(curr_sett, new_sett)
 --
---    ltt.debugtalk(ltt.mrX.settings, 'new midruleX settings')
---    ltt.mrX.settings.cntr = tonumber(curr_sett.cntr) -- todo this needs to be a settings var
+--    lutabt.debugtalk(lutabt.mrX.settings, 'new midruleX settings')
+--    lutabt.mrX.settings.cntr = tonumber(curr_sett.cntr) -- todo this needs to be a settings var
 --    if new_sett.cntr ~= nil then -- todo fix the counter
---        ltt.mrX.settings.cntr = tonumber(new_sett.cntr)
+--        lutabt.mrX.settings.cntr = tonumber(new_sett.cntr)
 --    end
 --    if new_sett.head ~= nil then -- todo fix the counter
---        ltt.mrX.settings.cntr = -1*tonumber(new_sett.head)
+--        lutabt.mrX.settings.cntr = -1*tonumber(new_sett.head)
 --    end
 --end
