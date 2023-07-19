@@ -27,6 +27,7 @@
 
 \RequirePackage{booktabs}
 \RequirePackage{multirow}
+\RequirePackage{longtable}
 \RequirePackage{makecell}
 \RequirePackage{xparse}
 \RequirePackage{array}
@@ -235,69 +236,3 @@
 \ProcessOptions
 
 
-
-
-
-
-
-%%%  OLD STUFF,
-%% before I had a fall-back for counting columns (just calculate current column on last column once)
-%%   and kept track of row numbers. I felt that this wasn't needed, so I've removed.
-%\newcommand{\TabColNum}{\luadirect{tex.print(lutabt.get_TabColNum())}} % prints the current column number of tabular
-%\newcommand{\NumTabCols}{\luadirect{tex.print(lutabt.NumTabCols)}} % prints the total num columns of tabular
-%\newcounter{RowNumCnt}
-%\setcounter{RowNumCnt}{1}
-%  \setcounter{RowNumCnt}{1}%
-%  \luadirect{lutabt.NumTabColsMX = 0}% fall back if calc doesnt work for some reason
-%  \setcounter{RowNumCnt}{1}%
-%  \luadirect{lutabt.NumTabColsMX = 0}% fall back if calc doesnt work for some reason
-%\DeclareOption{notrimx}{
-%  \global\newcolumntype{\lttltrim}{!{\stepcounter{RowNumCnt}}}
-%%  \global\newcolumntype{\lttrtrim}{!{\luadirect{lutabt.get_TabColNum()}}}
-%}
-%\DeclareOption{trimx}{
-%  \newcolumntype{\lttltrim}{@{\stepcounter{RowNumCnt}}}
-%%  \newcolumntype{\lttrtrim}{@{\luadirect{lutabt.get_TabColNum()}}}
-%}
-
-
-%% adapted from
-% https://tex.stackexchange.com/questions/182953/add-midrule-every-5-lines-automatically
-%% https://tex.stackexchange.com/questions/145084/what-is-the-function-of-noalign
-%
-%\def\midruleXstep{5}
-%\def\midruleXrule{\gmidrule}
-%
-%\newcounter{midruleX}
-%\newcommand*{\midruleXa}{%
-%  \aftergroup\aftergroup\aftergroup\midruleXaux
-%}
-%
-%\newif\ifmidruleX
-%
-%\newcommand*{\midruleXaux}{%
-%  \noalign{%
-%    \stepcounter{midruleX}%
-%    \ifnum\value{midruleX}=\midruleXstep %
-%      \global\midruleXtrue
-%      \resetmidruleX%
-%    \else
-%      \global\midruleXfalse
-%    \fi
-%  }
-%  \ifmidruleX\midruleXrule\fi
-%}
-
-%\newcommand*{\resetmidruleX}{\setcounter{midruleX}{0}}  %
-%\resetmidruleX
-
-%\NewDocumentCommand{\resetmidruleXonNP}{O{0}}{\luadirect{lutabt.reset_midruleX_on_newpage(\luastring{#1})}}
-
-%
-%\NewDocumentCommand{\IfmidruleX}{m m}{%  if a midruleX was placed, do #1, if not, do #2
-%  \ifnum\the\value{midruleX}=0
-%      #1
-%    \else
-%      #2
-%  \fi%
-%}

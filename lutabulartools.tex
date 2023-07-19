@@ -84,8 +84,6 @@
 
 \begin{document}
 
-%  todo: can improve naming... set col spec to a table instead of a string
-
 \maketitle
 
 \cmd{lutabulartools} is a package that contains a few useful Lua\LaTeX-based macros to help with tables.
@@ -169,7 +167,7 @@ Examples:\\
 \cmd{\MC[+,2]}, if placed in the second column, occupies the second column to the end of the table and is two rows tall.\\
 In any of these examples, you can place the alignment letters anywhere.
 So, \cmd{\MC[l1,2b]} and \cmd{\MC[1,2 lb]} are both left-bottom aligned (spaces are ignored).\\
-Put an \cmd{_} as the last thing to add a \cmd{cmidrule} under, followed by a trim spec (the thing that goes in \cmd{()})
+Put an \cmd{_} as the last thing to add a \cmd{cmidrule} under, followed by a trim spec (the thing that goes in \cmd{cmidrule()})
 \cmd{\MC[+c_l]} will add a \cmd{cmidrule} underneath the cell (which fills until the end of the table), with the left side trimmed.
 
 \llcmd{[override mc]}%
@@ -344,18 +342,20 @@ Here's an example:
 With this command, you can place a rule
 every X rows for the next table made (place command outside of table).
 You can configure the step size and what kind of midrule you prefer with the following key-val syntax, with default values below:\\
-\cmd{\midruleX{step=5,rule=midrule,cntr=0,head=0,long=false,longhead=0}}\\
-\cmd{step} is the number of rows (X) before applying the rule set by \cmd{rule}. \\
-Concering \cmd{longtable}s: If \cmd{long} is set to \cmd{true} (or the key is present),
-\cmd{\midruleX} will also add a unique \cmd{\label{}} on each row, and if the row starts on a newpage,
-resets the row counter to -1*\cmd{longhead}, to ensure you have the same X number of rows after the header of each page of a \cmd{longtable}.\\
+\cmd{\midruleX{step=5,rule=midrule,cntr=0,head=0,long=false}}\\
+\cmd{step} is the number of rows before applying the rule set by \cmd{rule}. \\
+
+Concerning \cmd{longtable}s: If \cmd{long} is set to \cmd{true} (or the key is present),
+\cmd{\midruleX} will also add a unique \cmd{\label{}} on each ro (to detect page changes), and if the row starts on a newpage,
+resets the row counter.
+
 Use optional parameter  \cmd{\midruleX*[o|n|f]{}}
 to control expansion of the key-val settings (\cmd{[n]} for not expanded is default).
 Before you want counting to begin, or anywhere in the table, you could
-apply \cmd{\resetmidruleX[cntr]} (\cmd{cnter} is incremented each row) to avoid header
-rows being counted and set the row \cmd{cntr} to an arbitrary value.
+apply \cmd{\resetmidruleX[cntr]} to an arbitrary value: \cmd{cntr} is normally incremented by 1 each row.
+You may want to avoid header rows being counted, or rows being underlined near the end of a table, for example.
 If you want to skip the first \cmd{x} rows with \cmd{\midruleX}, set \cmd{head=x} (which is equivalent to \cmd{cntr=-x}).
-If you want to add a \cmd{midrule} under row \cmd{x}, use \cmd{head*=x} instead.
+If you want to skip the auto-ruling at that ro \cmd{x} (say a gray one) and instead use a \cmd{midrule}, use \cmd{head*=x}.
 
 Note: Use \cmd{\noalign{\resetmiduleX}} if you need place a rule on the same line the reset takes place (ie. in a cell before \cmd{\\}).
 
@@ -421,15 +421,14 @@ Here's an example with long table. Notice the gray rules reliably appear 3 rows 
 \end{verbatim}
 
 \midruleX{long=true,rule="\gcmidrules{1r,2-}"}
-\def\tblhead{\toprule No & Name & Place & other\\\midrule}
-\def\tblcontinued{\MC[+l]{Continued...}\\}
+\def\tblhead{\toprule No & Name & Place & other\\\\\midrule}
+\def\tblcontinued{\MC[+l]{...\\Continued...}\\\noalign{\resetmidruleX} } % reset added to avoid line in header
 \def\tblcontinues{\MC[+r]{...Continues}\\}
 \begin{longtable}{rclc}
   \tblhead\endfirsthead
   \tblcontinued\tblhead\endhead % all the lines above this will be repeated on every page
   \tblcontinues\endfoot
   \bottomrule End.\endlastfoot
-  \resetmidruleX
 1       &           &       &  \\
 2       &  \MC[_]{hi}         &       &    \\
 3       &           &       &    \\
@@ -451,31 +450,11 @@ Here's an example with long table. Notice the gray rules reliably appear 3 rows 
 19      &           &       &    \\
 \end{longtable}
 
-%\begin{tabular}{ll}
-%  a \\
-%  b \\
-%  v \\
-%  d \\
-%  r \\
-%\end{tabular}
 
-Long table X example
+%Long table X example
+%\LTXtable{\linewidth}{ltxexample}
 
-\LTXtable{\linewidth}{ltxexample}
 
-%\luadirect{pl.help_wrt(lutabt.actlvl, 'actlevel')}
-%\luadirect{pl.help_wrt(lutabt.row_num, 'row')}
-%\lttdebugprt
-
-%\settabular{tbrule} % glitch with LTX
-%\midrulesat{1,2,3}
-%\begin{tabular}{ll}
-%  a \\
-%  b \\
-%  c \\
-%  d \\
-%  e \\
-%\end{tabular}
 
 
 \end{document}
