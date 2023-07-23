@@ -1,6 +1,6 @@
 --% Kale Ewasiuk (kalekje@gmail.com)
 --% +REVDATE+
---% Copyright (C) 2021-2022 Kale Ewasiuk
+--% Copyright (C) 2021-2023 Kale Ewasiuk
 --%
 --% Permission is hereby granted, free of charge, to any person obtaining a copy
 --% of this software and associated documentation files (the "Software"), to deal
@@ -23,14 +23,15 @@
 --% OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-local pl = _G['penlight'] or _G['pl'] -- penlight for this namespace is pl
-if (__PL_EXTRAS__ == nil) or  (__PENLIGHT__ == nil) then
-    tex.sprint('\\PackageError{lutabulartools}{penlight package with extras (or extrasglobals) option must be loaded before this package}{}')
-    tex.print('\\stop')
-end
-local T = pl.tablex
+
 
 local lutabt = {}
+
+local pl = penlight
+local T = pl.tablex
+
+lutabt.luakeys = require'luakeys'()  -- note: YAMLvars.sty will have checked existence of this already
+
 
 lutabt.tablelevel = 0
 
@@ -98,7 +99,7 @@ end
 
 
 function lutabt.set_tabular(sett)
-    sett = luakeys.parse(sett)
+    sett = lutabt.luakeys.parse(sett)
     local trim = ''
     for k, v in pairs(sett) do
         if k == 'tbrule' then
@@ -435,7 +436,7 @@ function lutabt.mrX.off()
 end
 
 function lutabt.mrX.set_midruleX(new_sett, def)
-    lutabt.mrX.settings = T.update(lutabt.mrX.settings, T.union(lutabt.mrX.resets, luakeys.parse(new_sett)))
+    lutabt.mrX.settings = T.update(lutabt.mrX.settings, T.union(lutabt.mrX.resets, lutabt.luakeys.parse(new_sett)))
     lutabt.debugtalk(lutabt.mrX.settings, 'new midruleX settings')
     if lutabt.mrX.settings.head ~= nil then
         lutabt.mrX.settings.cntr = -1*tonumber(lutabt.mrX.settings.head)
