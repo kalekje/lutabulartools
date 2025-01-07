@@ -1,6 +1,6 @@
 % Kale Ewasiuk (kalekje@gmail.com)
 % +REVDATE+
-% Copyright (C) 2021-2023 Kale Ewasiuk
+% Copyright (C) 2021-2025 Kale Ewasiuk
 %
 % Permission is hereby granted, free of charge, to any person obtaining a copy
 % of this software and associated documentation files (the "Software"), to deal
@@ -53,7 +53,7 @@
 \addtokomafont{date}{\raggedright}
 \author{Kale Ewasiuk (\url{kalekje@gmail.com})}
 \usepackage[yyyymmdd]{datetime}\renewcommand{\dateseparator}{--}
-\date{\today}
+\date{\,\,\today}
 
 
 
@@ -114,6 +114,9 @@ or adjusts the \cmd{tabcolsep} length (an integer must be used, the result is mu
 \settabular{nopad,tbrule,rowsep=2,colsep=2} % or
 \settabular{nopad=false,tbrule=false} % to set the switches to off
 \end{verbatim}
+
+\settabular{nopad}
+\settabular{!nopad}
 
 
 \section{Debugging}

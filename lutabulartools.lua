@@ -1,6 +1,6 @@
 --% Kale Ewasiuk (kalekje@gmail.com)
 --% +REVDATE+
---% Copyright (C) 2021-2023 Kale Ewasiuk
+--% Copyright (C) 2021-2025 Kale Ewasiuk
 --%
 --% Permission is hereby granted, free of charge, to any person obtaining a copy
 --% of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@ local lutabt = {}
 local pl = penlight
 local T = pl.tablex
 
-lutabt.luakeys = require'luakeys'()  -- note: YAMLvars.sty will have checked existence of this already
+lutabt.luakeys = require'luakeys'()
 
 
 lutabt.tablelevel = 0

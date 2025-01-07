@@ -1,6 +1,6 @@
 % Kale Ewasiuk (kalekje@gmail.com)
 % +REVDATE+
-% Copyright (C) 2021-2023 Kale Ewasiuk
+% Copyright (C) 2021-2025 Kale Ewasiuk
 %
 % Permission is hereby granted, free of charge, to any person obtaining a copy
 % of this software and associated documentation files (the "Software"), to deal
@@ -59,8 +59,15 @@
 }
 \NewDocumentCommand{\resetmidruleX}{O{0}}{\luadirect{lutabt.mrX.reset_midruleX(\luastring{#1})}}
 
+\NewCommandCopy{\ltt@RealPackageWarning}{\PackageWarning}
+\newcommand*{\ltt@DeactivatePackageWarning}{\renewcommand*{\PackageWarning}[2]{}}
+\newcommand*{\ltt@ActivatePackageWarning}{\RenewCommandCopy{\PackageWarning}{\ltt@RealPackageWarning}}
 
-\NewDocumentCommand{\settabular}{s m}{\luadirect{lutabt.set_tabular(\luastring{#2})}} %
+
+\NewDocumentCommand{\settabular}{s m}{\ltt@DeactivatePackageWarning%
+  \luadirect{lutabt.set_tabular(\luastring{#2})}%
+  \ltt@ActivatePackageWarning%
+}%
 
 \def\ltt@resetrownum{\luadirect{lutabt.reset_rows()}}
 \def\ltt@resetrownumhard{\luadirect{lutabt.row_num = 0}}
